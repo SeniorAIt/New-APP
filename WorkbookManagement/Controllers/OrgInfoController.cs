@@ -1,8 +1,14 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Text.Json;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 using WorkbookManagement.Data;
 using WorkbookManagement.Models;
 
@@ -20,6 +26,38 @@ namespace WorkbookManagement.Controllers
         {
             "Eastern Cape","Free State","Gauteng","KwaZulu-Natal","Limpopo",
             "Mpumalanga","Northern Cape","North West","Western Cape"
+        };
+
+        // Canonical programme types (order preserved)
+        private static readonly string[] ProgrammeTypesOrdered = new[]
+        {
+            "Short Course (Non Credit)",
+            "Short Course (Credit Bearing)",
+            "Skills Programmme",
+            "General Certificate",
+            "General Occupational Certificate",
+            "Elementary Certificate",
+            "Elementary Occupational Certificate",
+            "Intermediate Certificate",
+            "Intermediate Occupational Certificate",
+            "National Certificate",
+            "National Occupational Certificate",
+            "Higher Certificate",
+            "Higher Occupational Certificate",
+            "Advanced Occupational Certificate",
+            "Occupational Diploma",
+            "Diploma",
+            "Advanced Certificate",
+            "Advanced Occupational Diploma",
+            "Advanced Diploma",
+            "Specialised Occupational Diploma",
+            "Bachelor's Degree",
+            "Postgraduate Diploma",
+            "Bachelor's Honours Degree",
+            "Master's Degree",
+            "Professional Master's Degree",
+            "Doctoral Degree",
+            "Professional Doctorate"
         };
 
         public OrgInfoController(ApplicationDbContext db, UserManager<ApplicationUser> users)
@@ -40,34 +78,6 @@ namespace WorkbookManagement.Controllers
         {
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
-        }
-
-        private static bool IsProfileEdit(WorkbookSubmission wb) => wb.SubmissionId == null;
-        private static bool WantsProfileSave(string? nav) =>
-            string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase);
-
-        /// <summary>
-        /// Persist the current wizard JSON to the company profile and remove the temporary profile draft.
-        /// </summary>
-        private async Task<IActionResult> SaveProfileAndRedirectAsync(WorkbookSubmission wb)
-        {
-            // This action is only for the Organisation Info "profile draft" (no SubmissionId).
-            if (wb.SubmissionId != null)
-                return BadRequest("Saving the Organisation Profile is only allowed for a profile draft.");
-
-            var company = await _db.Companies.FirstOrDefaultAsync(c => c.Id == wb.CompanyId);
-            if (company is null) return NotFound("Company not found.");
-
-            company.OrgInfoJson = wb.Data;
-            company.OrgInfoUpdatedAtUtc = DateTime.UtcNow;
-
-            // Remove the temporary draft so it doesn't clutter the Workbooks list
-            _db.WorkbookSubmissions.Remove(wb);
-
-            await _db.SaveChangesAsync();
-
-            TempData["ok"] = "Organisation Info has been saved to your company profile.";
-            return RedirectToAction("Index", "Workbooks");
         }
 
         private async Task<WorkbookSubmission?> LoadScopedAsync(int id, bool track = false)
@@ -102,10 +112,202 @@ namespace WorkbookManagement.Controllers
             new ApprovalRow { Name = "Other (specify)", IsOther = true }
         };
 
+        // ------- reflection helpers for Step2 sync -------
+        private static string GetStringProp(object obj, params string[] candidates)
+        {
+            var t = obj.GetType();
+            foreach (var name in candidates)
+            {
+                var p = t.GetProperty(name, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+                if (p != null)
+                {
+                    var v = p.GetValue(obj)?.ToString()?.Trim();
+                    if (!string.IsNullOrWhiteSpace(v)) return v!;
+                }
+            }
+            return "";
+        }
+
+        private static void TrySetString(object obj, string propName, string value)
+        {
+            var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (p == null || !p.CanWrite) return;
+            if (p.PropertyType == typeof(string))
+            {
+                p.SetValue(obj, value);
+            }
+        }
+
+        private static void TrySetBool(object obj, string propName, bool value)
+        {
+            var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (p == null || !p.CanWrite) return;
+            var pt = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+            if (pt == typeof(bool))
+            {
+                p.SetValue(obj, value);
+            }
+        }
+
+        private static void TrySetInt(object obj, string propName, int value)
+        {
+            var p = obj.GetType().GetProperty(propName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+            if (p == null || !p.CanWrite) return;
+            var pt = Nullable.GetUnderlyingType(p.PropertyType) ?? p.PropertyType;
+            if (pt == typeof(int))
+            {
+                p.SetValue(obj, value);
+            }
+        }
+
+        private static void SyncOverviewQualificationsFromStep7(OrgInfoData data)
+        {
+            var src = data?.Qualifications?.Items ?? new List<QualificationCourseRow>();
+            var counts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var row in src)
+            {
+                var t = GetStringProp(row, "Type", "ProgrammeType", "ProgramType", "QualificationType");
+                if (string.IsNullOrWhiteSpace(t)) continue;
+                counts[t] = counts.TryGetValue(t, out var c) ? c + 1 : 1;
+            }
+
+            var dataType = data!.GetType();
+            var sec3Prop = dataType.GetProperty("Section3", BindingFlags.Public | BindingFlags.Instance);
+            if (sec3Prop == null) return;
+
+            var sec3 = sec3Prop.GetValue(data);
+            if (sec3 == null)
+            {
+                var sec3Instance = Activator.CreateInstance(sec3Prop.PropertyType);
+                sec3Prop.SetValue(data, sec3Instance);
+                sec3 = sec3Instance;
+            }
+
+            var qProp = sec3!.GetType().GetProperty("Qualifications", BindingFlags.Public | BindingFlags.Instance);
+            if (qProp == null || !qProp.CanWrite) return;
+
+            var qListType = qProp.PropertyType;
+            if (!qListType.IsGenericType || qListType.GetGenericTypeDefinition() != typeof(List<>)) return;
+            var elemType = qListType.GetGenericArguments()[0];
+
+            var orderedKeys = new List<string>();
+            foreach (var pt in ProgrammeTypesOrdered)
+            {
+                if (counts.ContainsKey(pt)) orderedKeys.Add(pt);
+            }
+            foreach (var extra in counts.Keys.OrderBy(k => k))
+            {
+                if (!orderedKeys.Contains(extra)) orderedKeys.Add(extra);
+            }
+
+            var listType = typeof(List<>).MakeGenericType(elemType);
+            var list = (IList)Activator.CreateInstance(listType)!;
+
+            foreach (var key in orderedKeys)
+            {
+                var count = counts[key];
+                var item = Activator.CreateInstance(elemType)!;
+
+                TrySetString(item, "Type", key);
+                TrySetString(item, "ProgrammeType", key);
+                TrySetString(item, "ProgramType", key);
+                TrySetString(item, "QualificationType", key);
+                TrySetString(item, "Name", key);
+
+                TrySetBool(item, "Offered", count > 0);
+                TrySetBool(item, "IsOffered", count > 0);
+
+                TrySetInt(item, "Quantity", count);
+                TrySetInt(item, "Qty", count);
+                TrySetInt(item, "Count", count);
+
+                list.Add(item);
+            }
+
+            qProp.SetValue(sec3, list);
+        }
+
+        // ------- NEW: map completed Step10 rows to historical rows -------
+        private static List<StudentHistoricalRow> BuildHistoricalFromCompleted(OrgInfoStudentCurrentSection current)
+        {
+            var result = new List<StudentHistoricalRow>();
+            if (current?.Rows == null) return result;
+
+            foreach (var r in current.Rows.Where(x => x != null && x.Completed))
+            {
+                var hist = new StudentHistoricalRow
+                {
+                    ProgrammeType = r.ProgrammeType,
+                    African = new GenderBreakdown
+                    {
+                        M = r.African?.M ?? 0,
+                        MD = r.African?.MD ?? 0,
+                        F = r.African?.F ?? 0,
+                        FD = r.African?.FD ?? 0
+                    },
+                    Coloured = new GenderBreakdown
+                    {
+                        M = r.Coloured?.M ?? 0,
+                        MD = r.Coloured?.MD ?? 0,
+                        F = r.Coloured?.F ?? 0,
+                        FD = r.Coloured?.FD ?? 0
+                    },
+                    Indian = new GenderBreakdown
+                    {
+                        M = r.Indian?.M ?? 0,
+                        MD = r.Indian?.MD ?? 0,
+                        F = r.Indian?.F ?? 0,
+                        FD = r.Indian?.FD ?? 0
+                    },
+                    White = new GenderBreakdown
+                    {
+                        M = r.White?.M ?? 0,
+                        MD = r.White?.MD ?? 0,
+                        F = r.White?.F ?? 0,
+                        FD = r.White?.FD ?? 0
+                    }
+                };
+
+                // total by race/gender
+                int total =
+                    (hist.African.M ?? 0) + (hist.African.MD ?? 0) + (hist.African.F ?? 0) + (hist.African.FD ?? 0) +
+                    (hist.Coloured.M ?? 0) + (hist.Coloured.MD ?? 0) + (hist.Coloured.F ?? 0) + (hist.Coloured.FD ?? 0) +
+                    (hist.Indian.M ?? 0) + (hist.Indian.MD ?? 0) + (hist.Indian.F ?? 0) + (hist.Indian.FD ?? 0) +
+                    (hist.White.M ?? 0) + (hist.White.MD ?? 0) + (hist.White.F ?? 0) + (hist.White.FD ?? 0);
+
+                hist.Total = total;
+
+                int sc = r.SC ?? 0;
+                int pr = r.PR ?? 0;
+                int di = r.DI ?? 0;
+
+                hist.SC = sc;
+                hist.PR = pr;
+                hist.DI = di;
+
+                if (total > 0)
+                {
+                    hist.SCPercent = Math.Round((decimal)sc * 100m / total, 2);
+                    hist.PRPercent = Math.Round((decimal)pr * 100m / total, 2);
+                    hist.DIPercent = Math.Round((decimal)di * 100m / total, 2);
+                }
+                else
+                {
+                    hist.SCPercent = null;
+                    hist.PRPercent = null;
+                    hist.DIPercent = null;
+                }
+
+                hist.VAR = total - (sc + pr + di);
+
+                result.Add(hist);
+            }
+
+            return result;
+        }
+
         // ------- START -------
-        /// <summary>
-        /// Starts an Organisation Info "profile draft" (SubmissionId = null), prefilled from the company profile if available.
-        /// </summary>
         [HttpGet]
         public async Task<IActionResult> Start(Guid? companyId)
         {
@@ -133,10 +335,6 @@ namespace WorkbookManagement.Controllers
                 resolvedCompanyId = me.CompanyId.Value;
             }
 
-            // Prefill from the company profile if present, else a blank default
-            var comp = await _db.Companies.AsNoTracking().FirstOrDefaultAsync(c => c.Id == resolvedCompanyId);
-            var initialJson = comp?.OrgInfoJson ?? JsonSerializer.Serialize(OrgInfoData.CreateDefault(), JsonOpts);
-
             var draft = new WorkbookSubmission
             {
                 Title = $"Organisation Information - {DateTime.UtcNow:yyyy-MM-dd HH:mm}",
@@ -146,8 +344,7 @@ namespace WorkbookManagement.Controllers
                 UserId = me.Id,
                 CreatedAt = DateTime.UtcNow,
                 UpdatedAt = DateTime.UtcNow,
-                Data = initialJson,
-                SubmissionId = null // IMPORTANT: profile draft, NOT part of a submission
+                Data = JsonSerializer.Serialize(OrgInfoData.CreateDefault(), JsonOpts)
             };
 
             _db.Add(draft);
@@ -164,7 +361,6 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
 
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View();
         }
 
@@ -177,9 +373,6 @@ namespace WorkbookManagement.Controllers
 
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "save", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Index", "Workbooks");
@@ -195,8 +388,17 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
 
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
-            return View(ParseData(wb));
+
+            var data = ParseData(wb);
+
+            // Build existing overview aggregates
+            OrgInfoOverviewBuilder.Build(data);
+
+            // Ensure Section3 shows Q/P/C by TYPE using items captured in Step7
+            SyncOverviewQualificationsFromStep7(data);
+
+            // NOTE: no save here; Step2 is read-only and we render from 'data'
+            return View(data);
         }
 
         [HttpPost]
@@ -211,9 +413,6 @@ namespace WorkbookManagement.Controllers
 
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step1), new { id });
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "save", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Index", "Workbooks");
@@ -239,7 +438,6 @@ namespace WorkbookManagement.Controllers
 
             ViewBag.Provinces = SouthAfricaProvinces;
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.Section1);
         }
 
@@ -254,7 +452,6 @@ namespace WorkbookManagement.Controllers
             {
                 ViewBag.Provinces = SouthAfricaProvinces;
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
@@ -265,9 +462,6 @@ namespace WorkbookManagement.Controllers
 
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step2), new { id });
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "save", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Index", "Workbooks");
@@ -291,7 +485,6 @@ namespace WorkbookManagement.Controllers
             await _db.SaveChangesAsync();
 
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.Board);
         }
 
@@ -305,7 +498,6 @@ namespace WorkbookManagement.Controllers
             if (!ModelState.IsValid)
             {
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
@@ -316,9 +508,6 @@ namespace WorkbookManagement.Controllers
 
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step3), new { id });
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "save", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Index", "Workbooks");
@@ -343,7 +532,6 @@ namespace WorkbookManagement.Controllers
             }
 
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.Employment);
         }
 
@@ -357,7 +545,6 @@ namespace WorkbookManagement.Controllers
             if (!ModelState.IsValid)
             {
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
@@ -368,9 +555,6 @@ namespace WorkbookManagement.Controllers
 
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step4), new { id });
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "save", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Index", "Workbooks");
@@ -396,7 +580,6 @@ namespace WorkbookManagement.Controllers
 
             ViewBag.Provinces = SouthAfricaProvinces;
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.Campuses);
         }
 
@@ -411,7 +594,6 @@ namespace WorkbookManagement.Controllers
             {
                 ViewBag.Provinces = SouthAfricaProvinces;
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
@@ -422,9 +604,6 @@ namespace WorkbookManagement.Controllers
 
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step5), new { id });
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "save", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Index", "Workbooks");
@@ -449,7 +628,6 @@ namespace WorkbookManagement.Controllers
             }
 
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.Qualifications);
         }
 
@@ -463,7 +641,6 @@ namespace WorkbookManagement.Controllers
             if (!ModelState.IsValid)
             {
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
@@ -474,9 +651,6 @@ namespace WorkbookManagement.Controllers
 
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step6), new { id });
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "save", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction("Index", "Workbooks");
@@ -515,7 +689,6 @@ namespace WorkbookManagement.Controllers
             await _db.SaveChangesAsync();
 
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.Pricing);
         }
 
@@ -529,7 +702,6 @@ namespace WorkbookManagement.Controllers
             if (!ModelState.IsValid)
             {
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
@@ -558,9 +730,6 @@ namespace WorkbookManagement.Controllers
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step7), new { id });
 
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
-
             if (string.Equals(nav, "next", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step9), new { id });
 
@@ -570,18 +739,42 @@ namespace WorkbookManagement.Controllers
         // ------- STEP 9: Part 7 — Student Stats (Historical) -------
         [HttpGet]
         public async Task<IActionResult> Step9(int id)
+
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
             var data = ParseData(wb);
+
             data.StudentHistorical ??= new OrgInfoStudentHistoricalSection();
 
+            var current = data.StudentCurrent ?? new OrgInfoStudentCurrentSection();
+            var rows = current.Rows ?? new List<StudentCurrentRow>();
+
+            // snapshot shows only Completed rows
+            var snapshot = rows
+                .Where(r => r != null && r.Completed && !string.IsNullOrWhiteSpace(r.ProgrammeType))
+                .ToList();
+
+            ViewBag.CurrentRows = snapshot;
+
+            // sync period
+            if (current.PeriodFrom.HasValue) data.StudentHistorical.PeriodFrom = current.PeriodFrom;
+            if (current.PeriodTo.HasValue) data.StudentHistorical.PeriodTo = current.PeriodTo;
+            if (current.Months.HasValue) data.StudentHistorical.Months = current.Months;
+
+            // *** Auto-prefill historical rows ONCE (if empty) from completed Step10 rows ***
+            if (data.StudentHistorical.Rows == null || data.StudentHistorical.Rows.Count == 0)
+            {
+                data.StudentHistorical.Rows = BuildHistoricalFromCompleted(current);
+            }
+
+            SaveData(wb, data);
+            await _db.SaveChangesAsync();
+
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.StudentHistorical);
         }
-
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Step9(int id, OrgInfoStudentHistoricalSection model, string? nav = "save")
@@ -589,29 +782,54 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
+            var n = (nav ?? "save").ToLowerInvariant();
+
+            // ========= NEW: explicit "refresh" branch (runs BEFORE ModelState check) =========
+            if (n == "refresh")
+            {
+                // Rebuild historical rows from COMPLETED Step10 rows and sync the period
+                var data = ParseData(wb);
+                data.StudentHistorical ??= new OrgInfoStudentHistoricalSection();
+
+                var current = data.StudentCurrent ?? new OrgInfoStudentCurrentSection();
+                data.StudentHistorical.Rows = BuildHistoricalFromCompleted(current);
+
+                if (current.PeriodFrom.HasValue) data.StudentHistorical.PeriodFrom = current.PeriodFrom;
+                if (current.PeriodTo.HasValue) data.StudentHistorical.PeriodTo = current.PeriodTo;
+                if (current.Months.HasValue) data.StudentHistorical.Months = current.Months;
+
+                SaveData(wb, data);
+                await _db.SaveChangesAsync();
+
+                return RedirectToAction(nameof(Step9), new { id });
+            }
+            // ========= /NEW =========
+
             if (!ModelState.IsValid)
             {
+                var dataForError = ParseData(wb);
+                var snapshot = dataForError.StudentCurrent?.Rows?
+                    .Where(r => r != null && r.Completed && !string.IsNullOrWhiteSpace(r.ProgrammeType))
+                    .ToList();
+                ViewBag.CurrentRows = snapshot;
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
-            var data = ParseData(wb);
-            data.StudentHistorical = model;
-            SaveData(wb, data);
+            var dataOk = ParseData(wb);
+            dataOk.StudentHistorical = model;
+            SaveData(wb, dataOk);
             await _db.SaveChangesAsync();
 
             if (string.Equals(nav, "prev", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step8), new { id });
-
-            if (string.Equals(nav, "saveprofile", StringComparison.OrdinalIgnoreCase))
-                return await SaveProfileAndRedirectAsync(wb);
 
             if (string.Equals(nav, "next", StringComparison.OrdinalIgnoreCase))
                 return RedirectToAction(nameof(Step10), new { id });
 
             return RedirectToAction(nameof(Step9), new { id });
         }
+
 
         // ------- STEP 10: Part 8 — Student Stats (Current / FINAL) -------
         [HttpGet]
@@ -624,7 +842,6 @@ namespace WorkbookManagement.Controllers
             data.StudentCurrent ??= new OrgInfoStudentCurrentSection();
 
             ViewBag.Id = id;
-            ViewBag.CanSaveProfile = IsProfileEdit(wb);
             return View(data.StudentCurrent);
         }
 
@@ -638,7 +855,6 @@ namespace WorkbookManagement.Controllers
             if (!ModelState.IsValid)
             {
                 ViewBag.Id = id;
-                ViewBag.CanSaveProfile = IsProfileEdit(wb);
                 return View(model);
             }
 
@@ -654,22 +870,14 @@ namespace WorkbookManagement.Controllers
                 return RedirectToAction(nameof(Step9), new { id });
             }
 
-            if (n == "saveprofile")
-            {
-                await _db.SaveChangesAsync();
-                return await SaveProfileAndRedirectAsync(wb);
-            }
-
             if (n == "next")
             {
-                // Finalize ONLY the wizard (rarely used for profile mode).
                 wb.Status = SubmissionStatus.Completed;
                 wb.UpdatedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
                 return RedirectToAction("Index", "Workbooks");
             }
 
-            // Save (stay on page)
             await _db.SaveChangesAsync();
             return RedirectToAction(nameof(Step10), new { id });
         }

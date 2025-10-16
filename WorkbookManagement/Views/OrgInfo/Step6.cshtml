@@ -5,9 +5,8 @@
     var id = (int)ViewBag.Id;
     var rows = Model.Sites ?? new List<WorkbookManagement.Models.CampusSiteRow>();
 
-    // Provinces (blank default first)
+    // Provinces (no blank item here; we'll render a hidden placeholder in the <select>)
     var provinceOptions = new List<SelectListItem> {
-        new("", ""),
         new("Eastern Cape","Eastern Cape"),
         new("Free State","Free State"),
         new("Gauteng","Gauteng"),
@@ -18,9 +17,6 @@
         new("North West","North West"),
         new("Western Cape","Western Cape")
     };
-
-    // Controller sets this when editing the top-level Org Info profile (SubmissionId == null)
-    bool canSaveProfile = ViewBag.CanSaveProfile == true;
 }
 
 @await Html.PartialAsync("_OrgInfoNav")
@@ -45,6 +41,17 @@
         vertical-align: middle;
         white-space: nowrap;
     }
+
+        /* Very faint vertical separators between columns */
+        .tight-table th + th,
+        .tight-table td + td {
+            border-left: 1px solid rgba(0,0,0,.06);
+        }
+
+        .tight-table th:first-child,
+        .tight-table td:first-child {
+            border-left: none;
+        }
 
     .table-wide {
         min-width: 1700px;
@@ -71,9 +78,6 @@
     </div>
 
     <form method="post" asp-action="Step6" asp-route-id="@id">
-        @Html.AntiForgeryToken()
-        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
         <div class="box">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="mb-0">Sites</h6>
@@ -104,18 +108,17 @@
                         @for (int i = 0; i < rows.Count; i++)
                         {
                             <tr>
-                                <td>
-                                    <input asp-for="Sites[@i].SiteId" class="form-control form-control-sm cell-s site-id" readonly />
-                                </td>
-                                <td>
-                                    <input asp-for="Sites[@i].CampusSiteName" class="form-control form-control-sm cell campus-name" />
-                                </td>
+                                <td><input asp-for="Sites[@i].SiteId" class="form-control form-control-sm cell-s site-id" readonly /></td>
+                                <td><input asp-for="Sites[@i].CampusSiteName" class="form-control form-control-sm cell campus-name" /></td>
                                 <td><input asp-for="Sites[@i].StreetAddress1" class="form-control form-control-sm cell" /></td>
                                 <td><input asp-for="Sites[@i].StreetAddress2" class="form-control form-control-sm cell" /></td>
                                 <td><input asp-for="Sites[@i].CityTown" class="form-control form-control-sm cell-s" /></td>
                                 <td><input asp-for="Sites[@i].PostalCode" class="form-control form-control-sm cell-xs" /></td>
                                 <td>
-                                    <select asp-for="Sites[@i].Province" asp-items="provinceOptions" class="form-select form-select-sm cell-s"></select>
+                                    <select asp-for="Sites[@i].Province" asp-items="provinceOptions" class="form-select form-select-sm cell-s">
+                                        <!-- Placeholder only; not part of the dropdown list -->
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
                                 <td><input asp-for="Sites[@i].GpsLatitude" class="form-control form-control-sm cell-s" /></td>
                                 <td><input asp-for="Sites[@i].GpsLongitude" class="form-control form-control-sm cell-s" /></td>
@@ -136,16 +139,6 @@
         <div class="d-flex gap-2 justify-content-end mb-5">
             <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
             <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
-
-            @* Only when editing the standalone Org Info profile *@
-            @if (canSaveProfile)
-            {
-                <button class="btn btn-outline-success" name="nav" value="saveprofile" type="submit"
-                        title="Save these details to your Organisation profile for future submissions">
-                    Save Organisation Profile
-                </button>
-            }
-
             <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
         </div>
     </form>
@@ -162,7 +155,7 @@
         <td><input name="Sites[__idx__].PostalCode" class="form-control form-control-sm cell-xs" /></td>
         <td>
             <select name="Sites[__idx__].Province" class="form-select form-select-sm cell-s">
-                <option value=""></option>
+                <option value="" selected hidden>Select</option>
                 <option value="Eastern Cape">Eastern Cape</option>
                 <option value="Free State">Free State</option>
                 <option value="Gauteng">Gauteng</option>
@@ -191,8 +184,9 @@
           const body = document.querySelector('#sitesTable tbody');
           const tpl  = document.querySelector('#row-template').innerHTML;
           const add  = document.getElementById('addRowBtn');
-          // Avoid TS warning by parsing the Razor value as a string:
-          let nextIndex = parseInt('@(Model.Sites?.Count ?? 0)', 10) || 0;
+
+          // Emit a plain number to avoid TS1109 warnings
+          let nextIndex = @((Model.Sites?.Count ?? 0));
 
           function pad3(n){ return String(n).padStart(3,'0'); }
 

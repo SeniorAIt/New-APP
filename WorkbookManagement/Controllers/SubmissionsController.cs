@@ -1,5 +1,4 @@
 ﻿using System.Security.Claims;
-using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,13 +35,6 @@ namespace WorkbookManagement.Controllers
               or SubmissionBundleStatus.Approved
               or SubmissionBundleStatus.Rejected;
 
-        private static OrgInfoData FromJsonOrDefault(string? json)
-        {
-            if (string.IsNullOrWhiteSpace(json)) return OrgInfoData.CreateDefault();
-            try { return JsonSerializer.Deserialize<OrgInfoData>(json) ?? OrgInfoData.CreateDefault(); }
-            catch { return OrgInfoData.CreateDefault(); }
-        }
-
         // GET: /Submissions
         public async Task<IActionResult> Index()
         {
@@ -56,8 +48,16 @@ namespace WorkbookManagement.Controllers
             if (!IsSuperAdmin)
             {
                 var cid = await CurrentUserCompanyIdAsync();
-                if (cid.HasValue) q = q.Where(s => s.CompanyId == cid.Value);
-                else q = q.Where(s => s.OwnerUserId == CurrentUserId);
+                if (cid.HasValue)
+                {
+                    // company-scoped users see their company’s submissions
+                    q = q.Where(s => s.CompanyId == cid.Value);
+                }
+                else
+                {
+                    // fallback: owner only
+                    q = q.Where(s => s.OwnerUserId == CurrentUserId);
+                }
             }
 
             var list = await q.AsNoTracking().ToListAsync();
@@ -65,7 +65,6 @@ namespace WorkbookManagement.Controllers
         }
 
         // POST: /Submissions/Start
-        // Allows multiple active bundles. WB1 is prefilled from Company Org Profile and marked Completed.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Start()
@@ -77,9 +76,25 @@ namespace WorkbookManagement.Controllers
                 return RedirectToAction(nameof(Index));
             }
 
+            // Prevent multiple concurrent “active” bundles for this owner/company.
+            // IMPORTANT: use only EF-translatable comparisons here.
+            var existingActive = await _db.Submissions
+                .Where(s => s.CompanyId == cid.Value && s.OwnerUserId == CurrentUserId)
+                .Where(s =>
+                       s.Status == SubmissionBundleStatus.Draft
+                    || s.Status == SubmissionBundleStatus.InProgress
+                    || s.Status == SubmissionBundleStatus.Completed)
+                .OrderByDescending(s => s.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (existingActive != null)
+            {
+                TempData["ok"] = "You already have an active submission. Continue working on it below.";
+                return RedirectToAction(nameof(Details), new { id = existingActive.Id });
+            }
+
             var now = DateTime.UtcNow;
 
-            // Create parent submission (no single-active restriction anymore)
             var submission = new Submission
             {
                 CompanyId = cid.Value,
@@ -91,62 +106,48 @@ namespace WorkbookManagement.Controllers
             _db.Submissions.Add(submission);
             await _db.SaveChangesAsync();
 
-            // Fetch latest Org Info profile and normalize JSON
-            var profile = await _db.Companies
-                .AsNoTracking()
-                .Where(c => c.Id == cid.Value)
-                .Select(c => new { c.OrgInfoJson, c.OrgInfoUpdatedAtUtc })
-                .FirstOrDefaultAsync();
-
-            var normalizedOrgInfo = JsonSerializer.Serialize(FromJsonOrDefault(profile?.OrgInfoJson));
-
-            // Child workbooks
-            var wb1 = new WorkbookSubmission
+            // Create the 3 child workbooks for this submission
+            var wbRows = new[]
             {
-                Title = $"Organisation Information - {now:yyyy-MM-dd HH:mm}",
-                WorkbookType = WorkbookType.Workbook1,
-                Data = normalizedOrgInfo,
-                Status = SubmissionStatus.Completed,      // still editable
-                UserId = CurrentUserId,
-                CompanyId = cid.Value,
-                SubmissionId = submission.Id,
-                CreatedAt = now,
-                UpdatedAt = now
+                new WorkbookSubmission
+                {
+                    Title = $"New Org Info - {now:yyyy-MM-dd HH:mm}",
+                    WorkbookType = WorkbookType.Workbook1,
+                    Status = SubmissionStatus.Draft,
+                    UserId = CurrentUserId,
+                    CompanyId = cid.Value,
+                    SubmissionId = submission.Id,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new WorkbookSubmission
+                {
+                    Title = $"New QA Workbook - {now:yyyy-MM-dd HH:mm}",
+                    WorkbookType = WorkbookType.Workbook2,
+                    Status = SubmissionStatus.Draft,
+                    UserId = CurrentUserId,
+                    CompanyId = cid.Value,
+                    SubmissionId = submission.Id,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                },
+                new WorkbookSubmission
+                {
+                    Title = $"New Training QA Workbook - {now:yyyy-MM-dd HH:mm}",
+                    WorkbookType = WorkbookType.Workbook3,
+                    Status = SubmissionStatus.Draft,
+                    UserId = CurrentUserId,
+                    CompanyId = cid.Value,
+                    SubmissionId = submission.Id,
+                    CreatedAt = now,
+                    UpdatedAt = now
+                }
             };
 
-            var wb2 = new WorkbookSubmission
-            {
-                Title = $"Quality Assurance - {now:yyyy-MM-dd HH:mm}",
-                WorkbookType = WorkbookType.Workbook2,
-                Status = SubmissionStatus.Draft,
-                Data = "{}",
-                UserId = CurrentUserId,
-                CompanyId = cid.Value,
-                SubmissionId = submission.Id,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-
-            var wb3 = new WorkbookSubmission
-            {
-                Title = $"Training QA - {now:yyyy-MM-dd HH:mm}",
-                WorkbookType = WorkbookType.Workbook3,
-                Status = SubmissionStatus.Draft,
-                Data = "{}",
-                UserId = CurrentUserId,
-                CompanyId = cid.Value,
-                SubmissionId = submission.Id,
-                CreatedAt = now,
-                UpdatedAt = now
-            };
-
-            _db.WorkbookSubmissions.AddRange(wb1, wb2, wb3);
+            _db.WorkbookSubmissions.AddRange(wbRows);
             await _db.SaveChangesAsync();
 
-            TempData["ok"] = profile?.OrgInfoUpdatedAtUtc is DateTime t
-                ? $"New submission started. Workbook 1 prefilled from Org Profile last updated {t.ToLocalTime():yyyy/MM/dd HH:mm}."
-                : "New submission started. No Organisation Profile found; Workbook 1 started from a blank template.";
-
+            TempData["ok"] = "New submission started. Complete all three workbooks, then submit the bundle.";
             return RedirectToAction(nameof(Details), new { id = submission.Id });
         }
 
@@ -167,6 +168,7 @@ namespace WorkbookManagement.Controllers
                 if (s.CompanyId != cid) return Forbid();
             }
 
+            // Derive bundle status from children if not already a terminal state
             if (!IsBundleTerminal(s.Status))
             {
                 var count = s.Workbooks?.Count ?? 0;
@@ -203,7 +205,7 @@ namespace WorkbookManagement.Controllers
                 if (s.CompanyId != cid) return Forbid();
             }
 
-            if (IsBundleTerminal(s.Status) && s.Status != SubmissionBundleStatus.Rejected)
+            if (IsBundleTerminal(s.Status))
             {
                 TempData["err"] = "This submission has already been finalized.";
                 return RedirectToAction(nameof(Details), new { id });
@@ -219,10 +221,6 @@ namespace WorkbookManagement.Controllers
             }
 
             s.Status = SubmissionBundleStatus.Submitted;
-            s.DecisionNote = null;
-            s.DecidedByUserId = null;
-            s.DecidedAtUtc = null;
-
             s.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
@@ -230,48 +228,7 @@ namespace WorkbookManagement.Controllers
             return RedirectToAction(nameof(Details), new { id });
         }
 
-        // POST: /Submissions/Resubmit/{id}
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Resubmit(Guid id)
-        {
-            var s = await _db.Submissions
-                .Include(x => x.Workbooks)
-                .FirstOrDefaultAsync(x => x.Id == id);
-
-            if (s == null) return NotFound();
-
-            var cid = await CurrentUserCompanyIdAsync();
-            if (cid == null || s.CompanyId != cid.Value) return Forbid();
-
-            if (s.Status != SubmissionBundleStatus.Rejected)
-            {
-                TempData["err"] = "Only rejected submissions can be resubmitted.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
-            var allCompleted = s.Workbooks.Count == 3
-                               && s.Workbooks.All(IsWorkbookComplete);
-
-            if (!allCompleted)
-            {
-                TempData["err"] = "All three workbooks must be completed before resubmitting.";
-                return RedirectToAction(nameof(Details), new { id });
-            }
-
-            s.Status = SubmissionBundleStatus.Submitted;
-            s.DecisionNote = null;
-            s.DecidedByUserId = null;
-            s.DecidedAtUtc = null;
-            s.UpdatedAt = DateTime.UtcNow;
-
-            await _db.SaveChangesAsync();
-
-            TempData["ok"] = "Submission resubmitted for review.";
-            return RedirectToAction(nameof(Details), new { id });
-        }
-
-        // POST: /Submissions/Delete/{id} (allowed until Submitted)
+        // POST: /Submissions/Delete/{id} (only when Draft)
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Delete(Guid id)
@@ -288,10 +245,9 @@ namespace WorkbookManagement.Controllers
                 if (s.CompanyId != cid) return Forbid();
             }
 
-            // Block deletion once it's been submitted (or beyond)
-            if (IsBundleTerminal(s.Status)) // Submitted / Approved / Rejected
+            if (s.Status != SubmissionBundleStatus.Draft)
             {
-                TempData["err"] = "This submission has already been submitted and can no longer be deleted.";
+                TempData["err"] = "Only draft submissions can be deleted.";
                 return RedirectToAction(nameof(Details), new { id });
             }
 
@@ -301,6 +257,5 @@ namespace WorkbookManagement.Controllers
             TempData["ok"] = "Submission deleted.";
             return RedirectToAction(nameof(Index));
         }
-
     }
 }

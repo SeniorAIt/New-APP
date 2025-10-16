@@ -1,9 +1,105 @@
-﻿@model WorkbookManagement.Models.OrgInfoData
+﻿@using System
+@using System.Linq
+@model WorkbookManagement.Models.OrgInfoData
 @{
     ViewData["Title"] = "Org Info — Overview (Page 2 of 8)";
     var id = (int)ViewBag.Id;
+
     string Show(object? v) => v == null || (v is string s && string.IsNullOrWhiteSpace(s)) ? "—" : v.ToString()!;
     string YesNo(bool v) => v ? "Yes" : "No";
+
+    // Expand short codes from Step3 (Section1.TypeOfInstitution) to full names
+    string ExpandInstitutionType(string? codeOrName)
+    {
+        var s = (codeOrName ?? "").Trim();
+        if (string.IsNullOrEmpty(s)) return "—";
+        if (s.Contains(' ')) return s;
+        switch (s.ToUpperInvariant())
+        {
+            case "PU": return "Public University";
+            case "UT": return "Public University of Technology";
+            case "TVET": return "Public TVET College";
+            case "CETC": return "Public Community Education and Training College";
+            case "PHEI": return "Private Higher Education Institution";
+            case "PC": return "Private College (FET Level)";
+            case "SDP": return "Private Skills Development Provider (SDP)";
+            case "NGO": return "Non-Governmental Organisation (NGO) Providing Training";
+            case "PPP": return "Private/Public Partnership";
+            case "CTD": return "Corporate Training Division/Academy";
+            case "OTHER":
+            case "Other": return "Other (Specify)";
+            // legacy
+            case "CET": return "Community Education and Training College";
+            case "HEI": return "Higher Education Institution";
+            default: return s;
+        }
+    }
+
+    // Canonical display order (matches your Step7 programme type list)
+    var programmeTypes = new[]
+    {
+        "Short Course (Non Credit)",
+        "Short Course (Credit Bearing)",
+        "Skills Programmme",
+        "General Certificate",
+        "General Occupational Certificate",
+        "Elementary Certificate",
+        "Elementary Occupational Certificate",
+        "Intermediate Certificate",
+        "Intermediate Occupational Certificate",
+        "National Certificate",
+        "National Occupational Certificate",
+        "Higher Certificate",
+        "Higher Occupational Certificate",
+        "Advanced Occupational Certificate",
+        "Occupational Diploma",
+        "Diploma",
+        "Advanced Certificate",
+        "Advanced Occupational Diploma",
+        "Advanced Diploma",
+        "Specialised Occupational Diploma",
+        "Bachelor's Degree",
+        "Postgraduate Diploma",
+        "Bachelor's Honours Degree",
+        "Master's Degree",
+        "Professional Master's Degree",
+        "Doctoral Degree",
+        "Professional Doctorate"
+    };
+
+    // ---- QUALIFICATIONS / PROGRAMMES / COURSES (from Section3.Qualifications) ----
+    // Controller's SyncOverviewQualificationsFromStep7() writes:
+    //   QualificationItem.Name     = programme type label
+    //   QualificationItem.Offered  = true/false
+    //   QualificationItem.Quantity = count per type
+    var quals = Model.Section3?.Qualifications ?? new List<WorkbookManagement.Models.QualificationItem>();
+
+    // Consolidate by Name (case-insensitive) in case duplicates exist
+    var grouped = quals
+        .GroupBy(q => (q.Name ?? "").Trim(), StringComparer.OrdinalIgnoreCase)
+        .Select(g => new
+        {
+            Type = g.Key,
+            Offered = g.Any(x => x.Offered),
+            Qty = g.Sum(x => x.Quantity ?? 0)
+        })
+        .Where(x => !string.IsNullOrWhiteSpace(x.Type) && x.Qty > 0)
+        .ToList();
+
+    // Order: canonical first, then extras alphabetically
+    var ordered = new List<dynamic>();
+    foreach (var pt in programmeTypes)
+    {
+        var item = grouped.FirstOrDefault(x => string.Equals(x.Type, pt, StringComparison.OrdinalIgnoreCase));
+        if (item != null) ordered.Add(item);
+    }
+    var extras = grouped
+        .Where(x => !programmeTypes.Any(pt => string.Equals(pt, x.Type, StringComparison.OrdinalIgnoreCase)))
+        .OrderBy(x => x.Type, StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    var typeRows = ordered.Concat(extras).ToList();
+    var totalQtyAllTypes = typeRows.Sum(x => (int)x.Qty);
 }
 
 @await Html.PartialAsync("_OrgInfoNav")
@@ -40,6 +136,46 @@
     .muted {
         color: #6c757d;
     }
+
+    .inline-row {
+        display: flex;
+        align-items: center;
+        gap: .4rem;
+    }
+
+        .inline-row .value {
+            flex: 1 1 auto;
+            min-width: 0;
+        }
+
+    .btn-mini {
+        padding: .125rem .4rem;
+        line-height: 1.1;
+        font-size: .75rem;
+    }
+
+    .btn-icon {
+        width: 28px;
+        height: 28px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 6px;
+        font-size: 1rem;
+        padding: 0;
+    }
+
+    .chk-center {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .head-badge {
+        font-size: .7rem;
+        vertical-align: middle;
+        margin-left: .25rem;
+    }
 </style>
 
 <div class="container mt-3">
@@ -52,21 +188,39 @@
                 <label class="label-sm">BBBEE LEVEL</label>
                 <div class="form-control form-control-sm dotted">@Show(Model.Section1.BBBEELevel)</div>
             </div>
+
             <div class="col-md-3">
                 <label class="label-sm">BOARD OF DIRECTORS</label>
-                <div class="form-control form-control-sm dotted">@Show(Model.Section1.BoardOfDirectors)</div>
+                <div class="inline-row">
+                    <div class="form-control form-control-sm dotted value">@Show(Model.Section1.BoardOfDirectors)</div>
+                    <a asp-action="Step4" asp-route-id="@id" class="btn btn-outline-secondary btn-mini btn-icon" title="Go to Board of Directors (Step 4)" aria-label="Go to Board of Directors (Step 4)">
+                        <span aria-hidden="true">👥</span>
+                        <span class="visually-hidden">Board of Directors (Step 4)</span>
+                    </a>
+                </div>
             </div>
+
             <div class="col-md-2">
                 <label class="label-sm">YEARS REG/ACCREDITED</label>
                 <div class="form-control form-control-sm dotted">@Show(Model.Section1.YearsRegAccredited)</div>
             </div>
+
             <div class="col-md-2">
                 <label class="label-sm">CAMPUSES/SITES</label>
-                <div class="form-control form-control-sm dotted">@Show(Model.Section1.CampusesSites)</div>
+                <div class="inline-row">
+                    <div class="form-control form-control-sm dotted value">@Show(Model.Section1.CampusesSites)</div>
+                    <a asp-action="Step6" asp-route-id="@id" class="btn btn-outline-secondary btn-mini btn-icon" title="Go to Campuses/Sites (Step 6)" aria-label="Go to Campuses and Sites (Step 6)">
+                        <span aria-hidden="true">📍</span>
+                        <span class="visually-hidden">Campuses and Sites (Step 6)</span>
+                    </a>
+                </div>
             </div>
+
             <div class="col-md-3">
                 <label class="label-sm">TYPE OF INSTITUTION</label>
-                <div class="form-control form-control-sm dotted">@Show(Model.Section1.TypeOfInstitution)</div>
+                <div class="form-control form-control-sm dotted">
+                    @ExpandInstitutionType(Model.Section1.TypeOfInstitution)
+                </div>
             </div>
         </div>
     </div>
@@ -79,20 +233,24 @@
                 <table class="table table-sm tight-table">
                     <thead>
                         <tr>
-                            <th>Title</th>
-                            <th class="text-center" style="width:60px">O</th>
+                            <th>Type</th>
+                            <th class="text-center" style="width:72px">
+                                 <span class="badge bg-light text-dark head-badge">@totalQtyAllTypes</span>
+                            </th>
                             <th class="text-center" style="width:90px">QTY</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @if (Model.Section3.Qualifications?.Any() == true)
+                        @if (typeRows.Any())
                         {
-                            foreach (var q in Model.Section3.Qualifications)
+                            foreach (var r in typeRows)
                             {
                                 <tr>
-                                    <td>@q.Name</td>
-                                    <td class="text-center">@YesNo(q.Offered)</td>
-                                    <td class="text-center">@Show(q.Quantity)</td>
+                                    <td>@r.Type</td>
+                                    <td class="chk-center">
+                                        <input class="form-check-input" type="checkbox" @(r.Offered ? "checked" : "") disabled />
+                                    </td>
+                                    <td class="text-center">@r.Qty</td>
                                 </tr>
                             }
                         }
@@ -110,7 +268,7 @@
                         <h6>REG/ACCREDITATION STATUS</h6>
                         <table class="table table-sm tight-table">
                             <tbody>
-                                @if (Model.Section3.RegistrationStatuses?.Any() == true)
+                                @if (Model.Section3?.RegistrationStatuses?.Any() == true)
                                 {
                                     foreach (var r in Model.Section3.RegistrationStatuses)
                                     {
@@ -133,7 +291,7 @@
                         <h6>Active Provinces</h6>
                         <table class="table table-sm tight-table">
                             <tbody>
-                                @if (Model.Section3.ActiveProvinces?.Any() == true)
+                                @if (Model.Section3?.ActiveProvinces?.Any() == true)
                                 {
                                     foreach (var p in Model.Section3.ActiveProvinces)
                                     {
@@ -202,6 +360,13 @@
             <div class="box">
                 <h6>Employee Stats</h6>
                 <div class="table-responsive">
+                    @{
+                        // enforce the exact display order
+                        var order = new[] { "Total", "African", "Coloured", "Indian", "White" };
+                        var empRows = (Model.Section6?.EmployeeStats ?? new List<WorkbookManagement.Models.EmployeeStatRow>())
+                        .OrderBy(r => Array.IndexOf(order, r.Group ?? ""))
+                        .ToList();
+                    }
                     <table class="table table-sm tight-table">
                         <thead>
                             <tr>
@@ -220,9 +385,9 @@
                             </tr>
                         </thead>
                         <tbody>
-                            @if (Model.Section6.EmployeeStats?.Any() == true)
+                            @if (empRows.Any())
                             {
-                                foreach (var r in Model.Section6.EmployeeStats)
+                                foreach (var r in empRows)
                                 {
                                     <tr>
                                         <td>@r.Group</td>
@@ -248,6 +413,7 @@
                     </table>
                 </div>
             </div>
+
 
             <div class="box">
                 <h6>Student Stats (Current)</h6>

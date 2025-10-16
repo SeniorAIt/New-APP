@@ -1,40 +1,13 @@
 ﻿@model IEnumerable<WorkbookManagement.Models.Submission>
 @using WorkbookManagement.Models
-
 @{
-    ViewData["Title"] = "Review Queue";
+    ViewData["Title"] = "Submissions";
     var q = (string)(ViewBag.FilterQ ?? "");
     SubmissionBundleStatus? st = (SubmissionBundleStatus?)ViewBag.FilterStatus;
     var statuses = Enum.GetValues(typeof(SubmissionBundleStatus)).Cast<SubmissionBundleStatus>();
-
-    // Custom order: show "Submitted" first (most relevant), then Rejected/Approved, then others
-    var order = new Dictionary<SubmissionBundleStatus, int>
-    {
-        [SubmissionBundleStatus.Submitted] = 0,
-        [SubmissionBundleStatus.Rejected] = 1,
-        [SubmissionBundleStatus.Approved] = 2,
-        [SubmissionBundleStatus.Draft] = 3,
-        [SubmissionBundleStatus.InProgress] = 4,
-        [SubmissionBundleStatus.Completed] = 5
-    };
-
-    string BadgeClass(SubmissionBundleStatus s) =>
-        s == SubmissionBundleStatus.Submitted ? "bg-info" :
-        s == SubmissionBundleStatus.Approved ? "bg-success" :
-        s == SubmissionBundleStatus.Rejected ? "bg-danger" :
-        s == SubmissionBundleStatus.Completed ? "bg-primary" :
-        s == SubmissionBundleStatus.InProgress ? "bg-warning text-dark" :
-                                                "bg-secondary";
-
-    var grouped = Model
-        .GroupBy(s => s.Status)
-        .OrderBy(g => order.TryGetValue(g.Key, out var i) ? i : 99)
-        .ToList();
-
-    var any = Model.Any();
 }
 
-<h2 class="mb-3">Review Queue</h2>
+<h2 class="mb-3">Submissions</h2>
 
 @if (TempData["ok"] is string ok)
 {
@@ -60,122 +33,74 @@
             }
         </select>
     </div>
-    <div class="col-md-4 d-flex gap-2">
+    <div class="col-md-4">
         <button class="btn btn-primary">Search</button>
         <a class="btn btn-outline-secondary" asp-action="Index">Clear</a>
-
-        @* Expand/Collapse helpers *@
-        <button type="button" class="btn btn-outline-dark ms-auto" id="expandAllBtn">Expand all</button>
-        <button type="button" class="btn btn-outline-dark" id="collapseAllBtn">Collapse all</button>
     </div>
 </form>
 
-@if (!any)
+@if (!Model.Any())
 {
     <div class="alert alert-info">No submissions found.</div>
 }
 else
 {
-    <div class="accordion" id="queueAccordion">
-        @foreach (var grp in grouped)
-        {
-            var status = grp.Key;
-            var count = grp.Count();
-            var headingId = $"heading-{status}";
-            var collapseId = $"collapse-{status}";
-            var initiallyOpen = status == SubmissionBundleStatus.Submitted; // open Submitted by default
-                                                                            <div class="accordion-item mb-2">
-                                                                                <h2 class="accordion-header" id="@headingId">
-                                                                                    <button class="accordion-button @(initiallyOpen ? "" : "collapsed")" type="button"
-                                                                                            data-bs-toggle="collapse" data-bs-target="#@collapseId"
-                                                                                            aria-expanded="@(initiallyOpen.ToString().ToLower())" aria-controls="@collapseId">
-                                                                                        <span class="me-2">Status:</span>
-                                                                                        <span class="badge @BadgeClass(status) me-2">@status</span>
-                                                                                        <span class="text-muted">(@count)</span>
-                                                                                    </button>
-                                                                                </h2>
-                                                                                <div id="@collapseId" class="accordion-collapse collapse @(initiallyOpen ? "show" : "")" aria-labelledby="@headingId" data-bs-parent="#queueAccordion">
-                                                                                    <div class="accordion-body p-0">
-                                                                                        <div class="table-responsive">
-                                                                                            <table class="table table-sm align-middle mb-0">
-                                                                                                <thead class="table-light">
-                                                                                                    <tr>
-                                                                                                        <th>Company</th>
-                                                                                                        <th>Owner</th>
-                                                                                                        <th>Status</th>
-                                                                                                        <th>Workbooks</th>
-                                                                                                        <th>Created</th>
-                                                                                                        <th>Updated</th>
-                                                                                                        <th class="text-end">Actions</th>
-                                                                                                    </tr>
-                                                                                                </thead>
-                                                                                                <tbody>
-                                    @foreach (var s in grp.OrderByDescending(x => x.UpdatedAt ?? x.CreatedAt))
-                                    {
-                                        <tr>
-                                            <td>@s.Company?.Name</td>
-                                            <td>@s.OwnerUser?.Email</td>
-                                            <td>
-                                                <span class="badge @BadgeClass(s.Status)">@s.Status</span>
-                                            </td>
-                                            <td>@(s.Workbooks?.Count ?? 0)</td>
-                                            <td>@s.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
-                                            <td>@(s.UpdatedAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
-                                            <td class="text-end">
-                                                <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@s.Id">View</a>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Company</th>
+                    <th>Owner</th>
+                    <th>Status</th>
+                    <th>Workbooks</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in Model)
+                {
+                    <tr>
+                        <td>@s.Company?.Name</td>
+                        <td>@s.OwnerUser?.Email</td>
+                        <td>
+                            <span class="badge bg-@(
+                                  s.Status == SubmissionBundleStatus.Submitted ? "info" :
+                                  s.Status == SubmissionBundleStatus.Approved ? "success" :
+                                  s.Status == SubmissionBundleStatus.Rejected ? "danger" :
+                                  s.Status == SubmissionBundleStatus.Completed ? "primary" :
+                                  s.Status == SubmissionBundleStatus.InProgress ? "warning text-dark" : "secondary")">
+                        @s.Status
+                    </span>
+                </td>
+                <td>@(s.Workbooks?.Count ?? 0)</td>
+                <td>@s.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                <td>@(s.UpdatedAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
+                <td class="text-end">
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Details" asp-route-id="@s.Id">View</a>
 
-                                                @* Only show decide buttons for Submitted bundles *@
-                                                @if (s.Status == SubmissionBundleStatus.Submitted)
-                                                {
-                                                    <form asp-action="Decide" asp-route-id="@s.Id" method="post"
-                                                          class="d-inline" onsubmit="return confirm('Approve this submission?');">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="decision" value="approve" />
-                                                        <button class="btn btn-sm btn-success">Approve</button>
-                                                    </form>
+                            @* Only show decide buttons for Submitted bundles *@
+                    @if (s.Status == SubmissionBundleStatus.Submitted)
+                            {
+                                <form asp-action="Decide" asp-route-id="@s.Id" method="post"
+                                      class="d-inline" onsubmit="return confirm('Approve this submission?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="decision" value="approve" />
+                                    <button class="btn btn-sm btn-success">Approve</button>
+                                </form>
 
-                                                    <form asp-action="Decide" asp-route-id="@s.Id" method="post"
-                                                          class="d-inline" onsubmit="return confirm('Reject this submission?');">
-                                                        @Html.AntiForgeryToken()
-                                                        <input type="hidden" name="decision" value="reject" />
-                                                        <button class="btn btn-sm btn-danger">Reject</button>
-                                                    </form>
-                                                }
-                                            </td>
-                                        </tr>
-                                    }
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        }
+                                <form asp-action="Decide" asp-route-id="@s.Id" method="post"
+                                      class="d-inline" onsubmit="return confirm('Reject this submission?');">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="decision" value="reject" />
+                                    <button class="btn btn-sm btn-danger">Reject</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
     </div>
-}
-
-@section Scripts {
-    <script>
-        (function () {
-            const acc = document.getElementById('queueAccordion');
-            if (!acc) return;
-
-            const expandAllBtn = document.getElementById('expandAllBtn');
-            const collapseAllBtn = document.getElementById('collapseAllBtn');
-
-            function setAll(open) {
-                acc.querySelectorAll('.accordion-collapse').forEach(el => {
-                    const shown = el.classList.contains('show');
-                    if (open && !shown) {
-                        new bootstrap.Collapse(el, { show: true }).show();
-                    } else if (!open && shown) {
-                        new bootstrap.Collapse(el, { show: false }).hide();
-                    }
-                });
-            }
-
-            expandAllBtn?.addEventListener('click', () => setAll(true));
-            collapseAllBtn?.addEventListener('click', () => setAll(false));
-        })();
-    </script>
 }

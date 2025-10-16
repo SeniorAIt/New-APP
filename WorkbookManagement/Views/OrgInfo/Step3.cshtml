@@ -8,16 +8,15 @@
     // Provinces from controller
     var provinces = (IEnumerable<string>)(ViewBag.Provinces ?? Array.Empty<string>());
 
-    // Province select items (blank option first)
+    // Build select lists once (with a blank first option)
     var provinceItems = new List<SelectListItem> { new SelectListItem { Text = "", Value = "" } };
     provinceItems.AddRange(provinces.Select(p => new SelectListItem { Text = p, Value = p }));
 
-    // Status select items (blank option first) — ApprovalStatus? should be nullable in the model
     var statusItems = Html.GetEnumSelectList<ApprovalStatus>().ToList();
     statusItems.Insert(0, new SelectListItem { Text = "", Value = "" });
 
-    bool showOtherInstitution = string.Equals(Model?.TypeOfInstitution, "Other", StringComparison.OrdinalIgnoreCase);
-    bool canSaveProfile = (ViewBag.CanSaveProfile == true);
+    var showOtherInstitution =
+        string.Equals(Model?.TypeOfInstitution, "Other", StringComparison.OrdinalIgnoreCase);
 }
 
 @await Html.PartialAsync("_OrgInfoNav")
@@ -59,10 +58,9 @@
 </style>
 
 <div class="container mt-3">
-    <h3>PART 1:- ADMINISTRATIVE / HEAD OFFICE</h3>
+    <h3>PART 1:- ADMINISTRATIVE/HEAD OFFICE</h3>
 
-    <!-- Explicitly post back to Step3 with the workbook id -->
-    <form method="post" asp-action="Step3" asp-route-id="@ViewBag.Id" novalidate>
+    <form method="post" novalidate>
         @Html.AntiForgeryToken()
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
@@ -94,6 +92,7 @@
                     <input asp-for="CompanyNpcNpoRegNo" class="form-control form-control-sm dotted" />
                 </div>
 
+                <!-- BBBEE Level dropdown -->
                 <div class="col-md-2">
                     <label class="label-sm">BBBEE LEVEL</label>
                     <select asp-for="BBBEELevel" class="form-select form-select-sm">
@@ -156,6 +155,7 @@
                     <input asp-for="TownCity" class="form-control form-control-sm dotted" />
                 </div>
 
+                <!-- Province with blank default -->
                 <div class="col-md-4">
                     <label class="label-sm">PROVINCE</label>
                     <select asp-for="Province" class="form-select form-select-sm" asp-items="provinceItems"></select>
@@ -172,7 +172,7 @@
                 </div>
 
                 <div class="col-md-8">
-                    <label class="label-sm">DISTRICT MUNICIPALITY</label>
+                    <label class="label-sm">DISTRICT MUNCIPALITY</label>
                     <input asp-for="DistrictMunicipality" class="form-control form-control-sm dotted" />
                 </div>
 
@@ -186,6 +186,7 @@
                     <input asp-for="PostalTownCity" class="form-control form-control-sm dotted" />
                 </div>
 
+                <!-- Postal Province with blank default -->
                 <div class="col-md-4">
                     <label class="label-sm">PROVINCE</label>
                     <select asp-for="PostalProvince" class="form-select form-select-sm" asp-items="provinceItems"></select>
@@ -242,6 +243,7 @@
                                     <input asp-for="Approvals[@i].IsOther" type="hidden" />
                                 </td>
 
+                                <!-- Status: blank default via statusItems + nullable enum -->
                                 <td>
                                     <select asp-for="Approvals[@i].Status"
                                             class="form-select form-select-sm"
@@ -252,6 +254,7 @@
                                     <input asp-for="Approvals[@i].Date" type="date" class="form-control form-control-sm dotted" />
                                 </td>
 
+                                <!-- Future checkbox (let the tag helper handle hidden false + checked state) -->
                                 <td class="text-center">
                                     <input asp-for="Approvals[@i].Future" type="checkbox" class="form-check-input" />
                                 </td>
@@ -264,18 +267,7 @@
 
         <div class="d-flex gap-2 justify-content-end mb-5">
             <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
-
-            <button class="btn btn-primary" name="nav" value="save" type="submit">Save</button>
-
-            @* Only show this when editing the Org Info profile (no SubmissionId) *@
-            @if (canSaveProfile)
-            {
-                <button class="btn btn-success" name="nav" value="saveprofile" type="submit"
-                        title="Save these details to your Organisation profile for future submissions">
-                    Save Organisation Profile
-                </button>
-            }
-
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
             <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
         </div>
     </form>
@@ -290,10 +282,14 @@
             const wrap = document.getElementById('otherSpecifyWrap');
             function toggle() {
                 if (!sel || !wrap) return;
-                wrap.classList.toggle('d-none', sel.value !== 'Other');
+                if (sel.value === 'Other') {
+                    wrap.classList.remove('d-none');
+                } else {
+                    wrap.classList.add('d-none');
+                }
             }
             sel && sel.addEventListener('change', toggle);
-            toggle(); // initial state
+            toggle(); // initial
         })();
     </script>
 }

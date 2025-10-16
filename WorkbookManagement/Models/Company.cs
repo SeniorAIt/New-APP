@@ -20,11 +20,5 @@ namespace WorkbookManagement.Models
 
         // Navigation
         public ICollection<ApplicationUser> Users { get; set; } = new List<ApplicationUser>();
-
-        // Stored JSON for the Organisation Info profile (same shape as Workbook 1)
-        public string? OrgInfoJson { get; set; }
-
-        // When the Org Info profile was last updated (UTC)
-        public DateTime? OrgInfoUpdatedAtUtc { get; set; }
     }
 }

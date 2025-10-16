@@ -7,21 +7,8 @@
     var done = Model.Workbooks?.Count(w => w.Status != SubmissionStatus.Draft) ?? 0;
     var allCompleted = (total == 3 && done == 3);
 
-    // Allow deletion until the bundle has been submitted (or decided)
-    bool canDeleteSubmission =
-        Model.Status == SubmissionBundleStatus.Draft
-        || Model.Status == SubmissionBundleStatus.InProgress
-        || Model.Status == SubmissionBundleStatus.Completed;
-
-    // First-time submit allowed when all complete AND not already Submitted/Approved/Rejected
-    bool canSubmitFresh =
-        allCompleted &&
-        !(Model.Status == SubmissionBundleStatus.Submitted
-       || Model.Status == SubmissionBundleStatus.Approved
-       || Model.Status == SubmissionBundleStatus.Rejected);
-
-    // Resubmit allowed when Rejected AND all complete
-    bool canResubmit = allCompleted && Model.Status == SubmissionBundleStatus.Rejected;
+    bool canDeleteSubmission = Model.Status == SubmissionBundleStatus.Draft;
+    bool canSubmitBundle = allCompleted && Model.Status is not (SubmissionBundleStatus.Submitted or SubmissionBundleStatus.Approved or SubmissionBundleStatus.Rejected);
 
     string SubmissionBadge(SubmissionBundleStatus s) => s switch
     {
@@ -57,7 +44,7 @@
     else
     {
         <button class="btn btn-outline-danger btn-sm" type="button" disabled
-                title="Submissions that have already been submitted (or decided) cannot be deleted.">
+                title="Only draft submissions can be deleted">
             Delete submission
         </button>
     }
@@ -78,52 +65,6 @@
     <span class="@SubmissionBadge(Model.Status)">@Model.Status</span>
 </div>
 
-@* --- Decision panels --- *@
-@if (Model.Status == SubmissionBundleStatus.Rejected)
-{
-    <!-- Current decision: Rejected (still editable; can resubmit) -->
-    <div class="alert alert-danger">
-        <div class="fw-semibold mb-1">
-            Decision:
-            <span class="badge bg-danger">Rejected</span>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(Model.DecisionNote))
-        {
-            <div class="mb-1"><span class="text-muted">Reason:</span> @Model.DecisionNote</div>
-        }
-        <div class="small text-muted">
-            @(Model.DecidedAtUtc?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")
-            @if (!string.IsNullOrWhiteSpace(Model.DecidedByUser?.Email))
-            {
-                <span> · by @Model.DecidedByUser!.Email</span>
-            }
-        </div>
-    </div>
-}
-else if (Model.HasPreviousDecision)
-{
-    <!-- Previous decision after a resubmit (status is now non-terminal like Submitted) -->
-    <div class="alert alert-secondary">
-        <div class="fw-semibold mb-1">
-            Previous decision:
-            <span class="badge @(Model.LastDecisionStatus == SubmissionBundleStatus.Approved ? "bg-success" : "bg-danger")">
-                @Model.LastDecisionStatus
-            </span>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(Model.LastDecisionNote))
-        {
-            <div class="mb-1"><span class="text-muted">Reason:</span> @Model.LastDecisionNote</div>
-        }
-        <div class="small text-muted">
-            @(Model.LastDecidedAtUtc?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")
-            @if (!string.IsNullOrWhiteSpace(Model.LastDecidedByUser?.Email))
-            {
-                <span> · by @Model.LastDecidedByUser!.Email</span>
-            }
-        </div>
-    </div>
-}
-
 <div class="table-responsive">
     <table class="table table-sm align-middle">
         <thead>
@@ -136,8 +77,7 @@ else if (Model.HasPreviousDecision)
             </tr>
         </thead>
         <tbody>
-            @foreach (var w in (Model.Workbooks ?? Enumerable.Empty<WorkbookSubmission>())
-                        .OrderBy(x => x.WorkbookType))
+            @foreach (var w in Model.Workbooks.OrderBy(x => x.WorkbookType))
             {
                 <tr>
                     <td>@w.Title</td>
@@ -145,20 +85,17 @@ else if (Model.HasPreviousDecision)
                     <td><span class="@WorkbookBadge(w.Status)">@w.Status</span></td>
                     <td>@w.UpdatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
                     <td class="text-end">
-                        <!-- Open always tries to open for edit unless bundle is Submitted (awaiting review) -->
+                        <!-- Open goes to the smart Workbooks/Open action -->
                         <a class="btn btn-primary btn-sm"
                            asp-controller="Workbooks" asp-action="Open" asp-route-id="@w.Id">Open</a>
 
-                        <!-- Delete workbook (POST) — still only in draft bundles, adjust if you want parity with submission rule -->
-                        @if (Model.Status == SubmissionBundleStatus.Draft)
-                        {
-                            <form asp-controller="Workbooks" asp-action="Delete" asp-route-id="@w.Id"
-                                  method="post" class="d-inline"
-                                  onsubmit="return confirm('Delete this workbook?');">
-                                @Html.AntiForgeryToken()
-                                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
-                            </form>
-                        }
+                        <!-- Delete workbook (POST) -->
+                        <form asp-controller="Workbooks" asp-action="Delete" asp-route-id="@w.Id"
+                              method="post" class="d-inline"
+                              onsubmit="return confirm('Delete this workbook?');">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                        </form>
                     </td>
                 </tr>
             }
@@ -166,28 +103,10 @@ else if (Model.HasPreviousDecision)
     </table>
 </div>
 
-@{
-    // pick next workbook to continue if any are still draft (null-safe)
-    var nextWb = (Model.Workbooks ?? Enumerable.Empty<WorkbookSubmission>())
-        .OrderBy(w => w.WorkbookType)
-        .FirstOrDefault(w => w.Status == SubmissionStatus.Draft);
-}
-
 <div class="d-flex gap-2">
     <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
 
-    <!-- Continue button to jump to next incomplete workbook -->
-    @if (nextWb != null)
-    {
-        <a class="btn btn-primary" asp-controller="Workbooks" asp-action="Open" asp-route-id="@nextWb.Id">Continue</a>
-    }
-    else
-    {
-        <button class="btn btn-primary" type="button" disabled>Continue</button>
-    }
-
-    <!-- Submit / Resubmit logic -->
-    @if (canSubmitFresh)
+    @if (canSubmitBundle)
     {
         <form asp-action="Submit" asp-route-id="@Model.Id" method="post"
               onsubmit="return confirm('Submit this bundle? No further edits will be allowed unless reopened.');">
@@ -195,16 +114,11 @@ else if (Model.HasPreviousDecision)
             <button class="btn btn-success" type="submit">Submit All</button>
         </form>
     }
-    else if (canResubmit)
-    {
-        <form asp-action="Resubmit" asp-route-id="@Model.Id" method="post"
-              onsubmit="return confirm('Resubmit this bundle for review?');">
-            @Html.AntiForgeryToken()
-            <button class="btn btn-success" type="submit">Resubmit</button>
-        </form>
-    }
     else
     {
-        <button class="btn btn-success" type="button" disabled>Submit</button>
+        <button class="btn btn-success" type="button" disabled
+                title="Complete all 3 workbooks (and ensure it’s not already Submitted/Approved/Rejected)">
+            Submit All
+        </button>
     }
 </div>

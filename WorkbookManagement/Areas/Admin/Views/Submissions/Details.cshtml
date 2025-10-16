@@ -2,28 +2,38 @@
 @using WorkbookManagement.Models
 
 @{
-    ViewData["Title"] = "Submission Details (Admin)";
-
-    string BadgeForBundle(SubmissionBundleStatus s)
-        => s == SubmissionBundleStatus.Submitted ? "info"
-         : s == SubmissionBundleStatus.Approved ? "success"
-         : s == SubmissionBundleStatus.Rejected ? "danger"
-         : s == SubmissionBundleStatus.Completed ? "success"
-         : s == SubmissionBundleStatus.InProgress ? "warning text-dark"
-         : "secondary";
-
-    string BadgeForWorkbook(SubmissionStatus s)
-        => s == SubmissionStatus.Approved ? "success"
-         : s == SubmissionStatus.Completed ? "success"
-         : s == SubmissionStatus.Submitted ? "info"
-         : "secondary";
-
-    string ShortId(Guid id) => id.ToString("N")[..8];
+    ViewData["Title"] = "Submission Details";
 }
 
-<h2 class="mb-3">
-    Submission <code>@ShortId(Model.Id)</code> <span class="badge bg-@BadgeForBundle(Model.Status) align-middle ms-1">@Model.Status</span>
-</h2>
+@functions {
+    // Map bundle statuses to Bootstrap badge classes (no switch-expr to keep Razor happy)
+    public string BadgeForBundle(SubmissionBundleStatus s)
+    {
+        if (s == SubmissionBundleStatus.Submitted) return "info";
+        if (s == SubmissionBundleStatus.Approved) return "success";
+        if (s == SubmissionBundleStatus.Rejected) return "danger";
+        if (s == SubmissionBundleStatus.Completed) return "success";
+        if (s == SubmissionBundleStatus.InProgress) return "warning text-dark";
+        return "secondary";
+    }
+
+    // Map workbook statuses to Bootstrap badge classes
+    public string BadgeForWorkbook(SubmissionStatus s)
+    {
+        if (s == SubmissionStatus.Completed) return "success";
+        if (s == SubmissionStatus.Approved) return "success";
+        if (s == SubmissionStatus.Submitted) return "info";
+        return "secondary";
+    }
+
+    public string ShortId(System.Guid id)
+    {
+        var s = id.ToString("N");
+        return s.Substring(0, 8);
+    }
+}
+
+<h2 class="mb-3">Submission <code>@ShortId(Model.Id)</code></h2>
 
 @if (TempData["ok"] is string ok && !string.IsNullOrWhiteSpace(ok))
 {
@@ -43,13 +53,17 @@
     </div>
     <div class="col-md-4">
         <div class="border rounded p-3 h-100">
-            <div><strong>Created:</strong> @Model.CreatedAt.ToLocalTime()</div>
+            <div>
+                <strong>Status:</strong>
+                <span class="badge bg-@BadgeForBundle(Model.Status) ms-1">@Model.Status</span>
+            </div>
+            <div class="mt-2"><strong>Created:</strong> @Model.CreatedAt.ToLocalTime()</div>
             <div><strong>Updated:</strong> @Model.UpdatedAt?.ToLocalTime()</div>
         </div>
     </div>
     <div class="col-md-4">
         <div class="border rounded p-3 h-100">
-            <div class="fw-semibold mb-1">Latest Decision</div>
+            <div class="fw-semibold mb-1">Decision</div>
             @if (Model.IsTerminal)
             {
                 <div>
@@ -60,7 +74,10 @@
                 <div><strong>At:</strong> @Model.DecidedAtUtc?.ToLocalTime()</div>
                 @if (!string.IsNullOrWhiteSpace(Model.DecisionNote))
                 {
-                    <div class="mt-1"><strong>Note:</strong><br /><span class="text-muted">@Model.DecisionNote</span></div>
+                    <div class="mt-1">
+                        <strong>Note:</strong><br />
+                        <span class="text-muted">@Model.DecisionNote</span>
+                    </div>
                 }
             }
             else
@@ -70,30 +87,6 @@
         </div>
     </div>
 </div>
-
-@* Show previous decision when this bundle was resubmitted and is currently not terminal (e.g. Submitted) *@
-@if (!Model.IsTerminal && Model.HasPreviousDecision)
-{
-    <div class="alert alert-warning">
-        <div class="fw-semibold mb-1">
-            Previous decision:
-            <span class="badge @(Model.LastDecisionStatus == SubmissionBundleStatus.Approved ? "bg-success" : "bg-danger")">
-                @Model.LastDecisionStatus
-            </span>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(Model.LastDecisionNote))
-        {
-            <div class="mb-1"><span class="text-muted">Reason:</span> @Model.LastDecisionNote</div>
-        }
-        <div class="small text-muted">
-            @(Model.LastDecidedAtUtc?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")
-            @if (!string.IsNullOrWhiteSpace(Model.LastDecidedByUser?.Email))
-            {
-                <span> · by @Model.LastDecidedByUser!.Email</span>
-            }
-        </div>
-    </div>
-}
 
 <h5 class="mt-3">Workbooks</h5>
 <div class="table-responsive">
@@ -113,17 +106,17 @@
                 <tr>
                     <td>@w.Title</td>
                     <td>@w.WorkbookType</td>
-                    <td><span class="badge bg-@BadgeForWorkbook(w.Status)">@w.Status</span></td>
+                    <td>
+                        <span class="badge bg-@BadgeForWorkbook(w.Status)">@w.Status</span>
+                    </td>
                     <td>@w.UpdatedAt.ToLocalTime()</td>
                     <td>
                         <a class="btn btn-outline-secondary btn-sm"
-                           asp-area=""
-                           asp-controller="Workbooks" asp-action="Show" asp-route-id="@w.Id">
+                           href="@Url.Action("Show", "Workbooks", new { id = w.Id })">
                             View
                         </a>
                         <a class="btn btn-primary btn-sm"
-                           asp-area=""
-                           asp-controller="Workbooks" asp-action="Open" asp-route-id="@w.Id">
+                           href="@Url.Action("Open", "Workbooks", new { id = w.Id })">
                             Open
                         </a>
                     </td>
@@ -139,7 +132,7 @@
 {
     <div class="card">
         <div class="card-body">
-            <h6 class="card-title mb-3">Make a decision</h6>
+            <h6 class="card-title mb-3">Decision</h6>
             <form method="post"
                   asp-area="Admin"
                   asp-controller="Submissions"

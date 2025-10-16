@@ -3,15 +3,13 @@
     ViewData["Title"] = "Org Info — Page 8 of 8";
     var id = (int)ViewBag.Id;
 
+    // Duration units (no blank entry; we show a hidden "Select" placeholder in the <select>)
     var durUnits = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
-        new("", ""),
         new("Hours","Hours"),
         new("Days","Days"),
         new("Months","Months"),
         new("Years","Years"),
     };
-
-    bool canSaveProfile = ViewBag.CanSaveProfile == true;
 }
 
 @await Html.PartialAsync("_OrgInfoNav")
@@ -36,6 +34,17 @@
         vertical-align: middle;
     }
 
+        /* Very faint vertical separators between columns */
+        .tight-table th + th,
+        .tight-table td + td {
+            border-left: 1px solid rgba(0,0,0,.06);
+        }
+
+        .tight-table th:first-child,
+        .tight-table td:first-child {
+            border-left: none;
+        }
+
     .nowrap {
         white-space: nowrap;
     }
@@ -44,6 +53,7 @@
         min-width: 2200px;
     }
 
+    /* lots of number columns */
     .cell-xl {
         min-width: 360px;
     }
@@ -68,13 +78,21 @@
         white-space: normal;
         word-break: break-word;
     }
+
+    /* Make small input-groups hug the input + fill the cell */
+    .input-group.input-group-sm {
+        width: 100%;
+    }
+
+        .input-group.input-group-sm .input-group-text {
+            padding: .25rem .4rem;
+        }
 </style>
 
 <div class="container mt-3">
     <h3>PART 6: - QUALIFICATIONS / PROGRAMMES / COURSES (PRICING)</h3>
 
     <form method="post" asp-action="Step8" asp-route-id="@id">
-        @Html.AntiForgeryToken()
         <div class="box">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="mb-0">Pricing</h6>
@@ -116,32 +134,102 @@
                     <tbody>
                         @for (int i = 0; i < (Model.Items?.Count ?? 0); i++)
                         {
+                            var it = Model.Items[i];
+                            var blankRow = it == null
+                            || (string.IsNullOrWhiteSpace(it.Code)
+                            && string.IsNullOrWhiteSpace(it.QualificationName)
+                            && string.IsNullOrWhiteSpace(it.Type)
+                            && string.IsNullOrWhiteSpace(it.NQFLevel));
+                            if (blankRow)
+                            {
+                                continue; // skip rendering completely blank rows
+                            }
                             <tr class="pricing-row">
                                 <!-- READ-ONLY identity fields -->
                                 <td><input asp-for="Items[@i].Code" class="form-control form-control-sm cell-xs" readonly /></td>
                                 <td><input asp-for="Items[@i].QualificationName" class="form-control form-control-sm cell-xl" readonly /></td>
                                 <td><input asp-for="Items[@i].Type" class="form-control form-control-sm cell-s" readonly /></td>
                                 <td><input asp-for="Items[@i].NQFLevel" class="form-control form-control-sm cell-xs" readonly /></td>
-                                <td><input asp-for="Items[@i].Credits" type="number" class="form-control form-control-sm cell-xs" readonly /></td>
+                                <td><input asp-for="Items[@i].Credits" type="number" class="form-control form-control-sm cell-xs credits" readonly /></td>
 
                                 <!-- Editable -->
                                 <td>
-                                    <select asp-for="Items[@i].DurationUnit" asp-items="durUnits" class="form-select form-select-sm cell-s"></select>
+                                    <select asp-for="Items[@i].DurationUnit" asp-items="durUnits" class="form-select form-select-sm cell-s">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
                                 <td><input asp-for="Items[@i].Duration" type="number" step="0.01" class="form-control form-control-sm cell-xs" /></td>
-                                <td><input asp-for="Items[@i].NotionalHours" type="number" class="form-control form-control-sm cell-xs nh" /></td>
 
-                                <td><input asp-for="Items[@i].Registration" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].Admin" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].Facilitation" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].TrainMaterials" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].PpeToolsEquipment" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].Overheads" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].Assessment" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].ReAssess" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].Moderation" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].Other" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
-                                <td><input asp-for="Items[@i].Certification" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <!-- NOTIONAL HOURS: auto = CREDITS * 10 (read-only) -->
+                                <td><input asp-for="Items[@i].NotionalHours" type="number" class="form-control form-control-sm cell-xs nh" readonly /></td>
+
+                                <!-- Rand-prefixed cost fields -->
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Registration" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Admin" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Facilitation" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].TrainMaterials" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].PpeToolsEquipment" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Overheads" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Assessment" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].ReAssess" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Moderation" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Other" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
+                                <td class="cell-s">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text">R</span>
+                                        <input asp-for="Items[@i].Certification" type="number" step="0.01" class="form-control form-control-sm cost" />
+                                    </div>
+                                </td>
 
                                 <td><input asp-for="Items[@i].Total" type="number" step="0.01" class="form-control form-control-sm cell-s total" readonly /></td>
                                 <td><input asp-for="Items[@i].AvePerNotionalHour" type="number" step="0.01" class="form-control form-control-sm cell-s ave" readonly /></td>
@@ -155,15 +243,6 @@
         <div class="d-flex gap-2 justify-content-end mb-5">
             <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
             <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
-
-            @if (canSaveProfile)
-            {
-                <button class="btn btn-outline-success" name="nav" value="saveprofile" type="submit"
-                        title="Also update your Organisation Info profile for future submissions">
-                    Save Organisation Profile
-                </button>
-            }
-
             <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
         </div>
     </form>
@@ -172,30 +251,56 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        (function(){
-          const body = document.querySelector('#pricingTable tbody');
+        (function () {
+            var table = document.getElementById('pricingTable');
+            if (!table) return;
 
-          function num(v){ const x = parseFloat(v); return isNaN(x) ? 0 : x; }
+            var body = table.tBodies[0];
+            if (!body) return;
 
-          function recalcRow(tr){
-            const costs = tr.querySelectorAll('.cost');
-            let total = 0;
-            costs.forEach(i => total += num(i.value));
-            const nh = num(tr.querySelector('.nh')?.value || '');
-            const totalEl = tr.querySelector('.total');
-            const aveEl   = tr.querySelector('.ave');
-            if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
-            if (aveEl)   aveEl.value   = (nh > 0 && total) ? (total/nh).toFixed(2) : '';
-          }
+            function num(v) {
+                var x = parseFloat(v);
+                return isNaN(x) ? 0 : x;
+            }
 
-          // recalc on any change
-          body.addEventListener('input', (e) => {
-            const tr = e.target.closest('tr.pricing-row');
-            if (tr) recalcRow(tr);
-          });
+            function recalcRow(tr) {
+                // credits -> notional hours (read-only)
+                var credEl = tr.querySelector('.credits');
+                var nhEl = tr.querySelector('.nh');
+                var credits = num(credEl ? credEl.value : '');
+                var nh = credits > 0 ? (credits * 10) : 0;
+                if (nhEl) nhEl.value = nh ? nh.toFixed(0) : '';
 
-          // initial calc
-          body.querySelectorAll('tr.pricing-row').forEach(recalcRow);
+                // sum all cost cells -> total
+                var total = 0;
+                var costs = tr.querySelectorAll('.cost');
+                for (var i = 0; i < costs.length; i++) total += num(costs[i].value);
+
+                var totalEl = tr.querySelector('.total');
+                var aveEl = tr.querySelector('.ave');
+
+                if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
+                if (aveEl) aveEl.value = (nh > 0 && total) ? (total / nh).toFixed(2) : '';
+            }
+
+            // recalc when any cost/duration/etc changes
+            body.addEventListener('input', function (e) {
+                var tr = e.target.closest('tr.pricing-row');
+                if (tr) recalcRow(tr);
+            });
+
+            // initial calc
+            var rows = body.querySelectorAll('tr.pricing-row');
+            for (var i = 0; i < rows.length; i++) recalcRow(rows[i]);
+
+            // make sure NH/averages are correct right before submit
+            var form = table.closest('form');
+            if (form) {
+                form.addEventListener('submit', function () {
+                    var rows = body.querySelectorAll('tr.pricing-row');
+                    for (var i = 0; i < rows.length; i++) recalcRow(rows[i]);
+                });
+            }
         })();
     </script>
 }

@@ -2,11 +2,7 @@
 @{
     ViewData["Title"] = "QA — Page 1 of 13 (Overview)";
     var id = (int)ViewBag.Id;
-    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
 }
-
-@* Top step tabs *@
-@await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
 
 <style>
     .box {
@@ -43,6 +39,7 @@
             international quality assurance guidelines (ASG-QA, ESG), internationally recognised management system standards (ISO 21001:2018 EOMS),
             and people management frameworks (Investors in People).
         </p>
+
         <p class="mb-0">
             Adherence to this framework signifies a commitment to ethical governance, strategic effectiveness, high-quality teaching and learning,
             robust learner support, staff development, efficient resource management, continuous improvement, stakeholder value and legal compliance.
@@ -68,20 +65,9 @@
     <form method="post" asp-action="Step1" asp-route-id="@id">
         @Html.AntiForgeryToken()
 
-        <fieldset @(readOnly ? "disabled" : null)>
-            @* (no inputs on this page yet) *@
-        </fieldset>
-
-        @* Footer buttons from QANav:
-           - hide Previous on Step 1
-           - show Save Draft
-           - label the submit "Next"
-        *@
-        @{
-            ViewData["QaNavMode"] = "footer";
-            ViewData["QaHidePrev"] = true;
-            ViewData["QaFinishLabel"] = "Next";
-        }
-        @await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+        <div class="d-flex gap-2 justify-content-end mb-4">
+            <button class="btn btn-secondary" name="nav" value="save" type="submit">Save Draft</button>
+            <button class="btn btn-primary" name="nav" value="next" type="submit">Next</button>
+        </div>
     </form>
 </div>

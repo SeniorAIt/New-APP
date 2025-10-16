@@ -1,7 +1,5 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.AspNetCore.Mvc;            // <-- added
-using Microsoft.AspNetCore.Http.Features;  // <-- added
 using WorkbookManagement.Data;
 using WorkbookManagement.Models;
 using WorkbookManagement.Areas.Identity.Data;
@@ -49,11 +47,7 @@ builder.Services.AddAuthorization(options =>
 // -------------------------
 // MVC + Razor Pages
 // -------------------------
-// Global antiforgery: validate tokens on POST/PUT/PATCH/DELETE automatically
-builder.Services.AddControllersWithViews(options =>
-{
-    options.Filters.Add(new AutoValidateAntiforgeryTokenAttribute());
-});
+builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages(options =>
 {
     // Gate the built-in Register page to SuperAdmin only
@@ -62,34 +56,6 @@ builder.Services.AddRazorPages(options =>
     // (Optional) also gate RegisterConfirmation if desired
     // options.Conventions.AuthorizeAreaPage("Identity", "/Account/RegisterConfirmation", "SuperAdminOnly");
 });
-
-// Server-side upload size limit (keep in sync with controller MaxAttachmentBytes = 50 MB)
-builder.Services.Configure<FormOptions>(o =>
-{
-    o.MultipartBodyLengthLimit = 50L * 1024 * 1024; // 50 MB
-});
-
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.Limits.MaxRequestBodySize = 50L * 1024 * 1024; // 50 MB
-});
-
-
-// -------------------------
-// Display Timezone service (SAST)
-// -------------------------
-// Use Windows ID on Windows hosts, IANA ID elsewhere; fall back to UTC if missing.
-var saTzId = OperatingSystem.IsWindows() ? "South Africa Standard Time" : "Africa/Johannesburg";
-TimeZoneInfo saTimeZone;
-try
-{
-    saTimeZone = TimeZoneInfo.FindSystemTimeZoneById(saTzId);
-}
-catch
-{
-    saTimeZone = TimeZoneInfo.Utc;
-}
-builder.Services.AddSingleton(saTimeZone);
 
 var app = builder.Build();
 

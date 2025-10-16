@@ -47,7 +47,11 @@
     <div class="alert alert-danger">@err</div>
 }
 
-@* (New Submission button removed) *@
+<div class="mb-3 d-flex gap-2">
+    <form asp-controller="Submissions" asp-action="Start" method="post">
+        <button class="btn btn-primary btn-sm" type="submit">New Submission</button>
+    </form>
+</div>
 
 @* ---------- APPROVED ---------- *@
 @if (approved.Any())

@@ -149,77 +149,6 @@ namespace WorkbookManagement.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("WorkbookManagement.Models.Announcement", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AttachmentContentType")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AttachmentFileName")
-                        .HasMaxLength(260)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AttachmentPath")
-                        .HasMaxLength(400)
-                        .HasColumnType("TEXT");
-
-                    b.Property<long?>("AttachmentSizeBytes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<DateTime?>("AttachmentUploadedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("AuthorUserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Body")
-                        .IsRequired()
-                        .HasMaxLength(4000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("CompanyId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("ExpiresAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AuthorUserId");
-
-                    b.HasIndex("CompanyId", "CreatedAtUtc");
-
-                    b.ToTable("Announcements");
-                });
-
-            modelBuilder.Entity("WorkbookManagement.Models.AnnouncementCompany", b =>
-                {
-                    b.Property<Guid>("AnnouncementId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("AnnouncementId", "CompanyId");
-
-                    b.HasIndex("CompanyId");
-
-                    b.ToTable("AnnouncementCompanies");
-                });
-
             modelBuilder.Entity("WorkbookManagement.Models.ApplicationUser", b =>
                 {
                     b.Property<string>("Id")
@@ -299,50 +228,6 @@ namespace WorkbookManagement.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("WorkbookManagement.Models.CalendarEvent", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<bool>("AllDay")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("Category")
-                        .HasMaxLength(40)
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid?>("CompanyId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("CreatedByUserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(2000)
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("EndUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("StartUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(160)
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedByUserId");
-
-                    b.HasIndex("CompanyId", "StartUtc");
-
-                    b.ToTable("CalendarEvents");
-                });
-
             modelBuilder.Entity("WorkbookManagement.Models.Company", b =>
                 {
                     b.Property<Guid>("Id")
@@ -368,66 +253,12 @@ namespace WorkbookManagement.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("OrgInfoJson")
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime?>("OrgInfoUpdatedAtUtc")
-                        .HasColumnType("TEXT");
-
                     b.HasKey("Id");
 
                     b.HasIndex("Name")
                         .IsUnique();
 
                     b.ToTable("Companies");
-                });
-
-            modelBuilder.Entity("WorkbookManagement.Models.CompanyDocument", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("TEXT");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("ContentType")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("DocumentType")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("OriginalFileName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<long>("SizeBytes")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("StoredFileName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.Property<DateTime>("UploadedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("UploadedByUserId")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UploadedByUserId");
-
-                    b.HasIndex("CompanyId", "UploadedAtUtc");
-
-                    b.HasIndex("CompanyId", "DocumentType", "UploadedAtUtc");
-
-                    b.ToTable("CompanyDocuments");
                 });
 
             modelBuilder.Entity("WorkbookManagement.Models.Submission", b =>
@@ -452,18 +283,6 @@ namespace WorkbookManagement.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime?>("LastDecidedAtUtc")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastDecidedByUserId")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastDecisionNote")
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("LastDecisionStatus")
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("OwnerUserId")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -480,8 +299,6 @@ namespace WorkbookManagement.Migrations
                     b.HasIndex("CompanyId");
 
                     b.HasIndex("DecidedByUserId");
-
-                    b.HasIndex("LastDecidedByUserId");
 
                     b.HasIndex("OwnerUserId");
 
@@ -587,43 +404,6 @@ namespace WorkbookManagement.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("WorkbookManagement.Models.Announcement", b =>
-                {
-                    b.HasOne("WorkbookManagement.Models.ApplicationUser", "AuthorUser")
-                        .WithMany()
-                        .HasForeignKey("AuthorUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("WorkbookManagement.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.Navigation("AuthorUser");
-
-                    b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("WorkbookManagement.Models.AnnouncementCompany", b =>
-                {
-                    b.HasOne("WorkbookManagement.Models.Announcement", "Announcement")
-                        .WithMany("Targets")
-                        .HasForeignKey("AnnouncementId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("WorkbookManagement.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Announcement");
-
-                    b.Navigation("Company");
-                });
-
             modelBuilder.Entity("WorkbookManagement.Models.ApplicationUser", b =>
                 {
                     b.HasOne("WorkbookManagement.Models.Company", "Company")
@@ -632,43 +412,6 @@ namespace WorkbookManagement.Migrations
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Company");
-                });
-
-            modelBuilder.Entity("WorkbookManagement.Models.CalendarEvent", b =>
-                {
-                    b.HasOne("WorkbookManagement.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("WorkbookManagement.Models.ApplicationUser", "CreatedByUser")
-                        .WithMany()
-                        .HasForeignKey("CreatedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("CreatedByUser");
-                });
-
-            modelBuilder.Entity("WorkbookManagement.Models.CompanyDocument", b =>
-                {
-                    b.HasOne("WorkbookManagement.Models.Company", "Company")
-                        .WithMany()
-                        .HasForeignKey("CompanyId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("WorkbookManagement.Models.ApplicationUser", "UploadedByUser")
-                        .WithMany()
-                        .HasForeignKey("UploadedByUserId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Company");
-
-                    b.Navigation("UploadedByUser");
                 });
 
             modelBuilder.Entity("WorkbookManagement.Models.Submission", b =>
@@ -684,11 +427,6 @@ namespace WorkbookManagement.Migrations
                         .HasForeignKey("DecidedByUserId")
                         .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("WorkbookManagement.Models.ApplicationUser", "LastDecidedByUser")
-                        .WithMany()
-                        .HasForeignKey("LastDecidedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
                     b.HasOne("WorkbookManagement.Models.ApplicationUser", "OwnerUser")
                         .WithMany()
                         .HasForeignKey("OwnerUserId")
@@ -698,8 +436,6 @@ namespace WorkbookManagement.Migrations
                     b.Navigation("Company");
 
                     b.Navigation("DecidedByUser");
-
-                    b.Navigation("LastDecidedByUser");
 
                     b.Navigation("OwnerUser");
                 });
@@ -728,11 +464,6 @@ namespace WorkbookManagement.Migrations
                     b.Navigation("Submission");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("WorkbookManagement.Models.Announcement", b =>
-                {
-                    b.Navigation("Targets");
                 });
 
             modelBuilder.Entity("WorkbookManagement.Models.ApplicationUser", b =>

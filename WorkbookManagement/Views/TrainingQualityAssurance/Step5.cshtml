@@ -3,17 +3,11 @@
     ViewData["Title"] = "Part 3: Facilitator Readiness";
     var id = (int)ViewBag.Id;
     var partMap = Model.Parts.ToDictionary(p => p.PartCode, p => p.Title);
-
-    // If you use the shared nav/progress:
-    // ViewData["TqaActiveStep"] = 5;
-    // ViewData["TqaTotalSteps"] = 8;
 }
-@* @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml") *@
 
 <h6 class="text-uppercase fw-bold mb-2">PART 3:- FACILITATOR READINESS</h6>
 
 <form asp-action="Step5" asp-route-id="@id" method="post" id="facilitatorReadinessForm" class="mb-5 pb-5">
-    @Html.AntiForgeryToken()
     <input type="hidden" name="id" value="@id" />
 
     <!-- Header line fields -->
@@ -189,66 +183,42 @@
             function fmtPct(n){ return (Math.round(n*10)/10).toFixed(1).replace(".", ",") + "%"; }
 
             function updateRowVisuals(select){
-                const row  = select.closest("tr");
+                const row = select.closest("tr");
                 const icon = row.querySelector(".ci-icon");
                 const cell = row.querySelector(".reqreqmt-cell");
-
-                icon.className = "ci-icon ms-2";
-                icon.style.display = "inline";
-                cell.style.color = "";
-                cell.classList.remove("line-through");
-
+                icon.className = "ci-icon ms-2"; icon.style.display = "inline";
+                cell.style.color = ""; cell.classList.remove("line-through");
                 switch (select.value){
-                    case "3":
-                        icon.classList.add("bi","bi-check-circle-fill","text-success");
-                        cell.style.color = "green";
-                        break;
-                    case "2":
-                        icon.classList.add("bi","bi-x-circle-fill","text-danger");
-                        cell.style.color = "red";
-                        break;
-                    case "1":
-                        icon.classList.add("bi","bi-exclamation-circle-fill","text-warning");
-                        cell.style.color = "goldenrod";
-                        cell.classList.add("line-through");
-                        break;
-                    default:
-                        icon.style.display = "none";
-                        break;
+                    case "3": icon.classList.add("bi","bi-check-circle-fill","text-success"); cell.style.color="green"; break;
+                    case "2": icon.classList.add("bi","bi-x-circle-fill","text-danger"); cell.style.color="red"; break;
+                    case "1": icon.classList.add("bi","bi-exclamation-circle-fill","text-warning"); cell.style.color="goldenrod"; cell.classList.add("line-through"); break;
+                    default: icon.style.display="none"; break;
                 }
             }
 
             function recalcSummary(){
                 const selects = Array.from(document.querySelectorAll(".ci-select"));
                 let compliant = 0, nonCompliant = 0, applicable = 0;
-
                 selects.forEach(s => {
                     if (s.value === "3"){ compliant++; applicable++; }
                     else if (s.value === "2"){ nonCompliant++; applicable++; }
                 });
-
-                if (compCountEl)     compCountEl.textContent     = String(compliant);
-                if (nonCompCountEl)  nonCompCountEl.textContent  = String(nonCompliant);
-
+                if (compCountEl) compCountEl.textContent = compliant;
+                if (nonCompCountEl) nonCompCountEl.textContent = nonCompliant;
                 if (compPctEl && nonCompPctEl){
                     if (applicable > 0){
-                        compPctEl.textContent    = fmtPct(compliant/applicable*100);
+                        compPctEl.textContent = fmtPct(compliant/applicable*100);
                         nonCompPctEl.textContent = fmtPct(nonCompliant/applicable*100);
                     } else {
-                        compPctEl.textContent    = "0,0%";
-                        nonCompPctEl.textContent = "0,0%";
+                        compPctEl.textContent = "0,0%"; nonCompPctEl.textContent = "0,0%";
                     }
                 }
             }
 
             document.querySelectorAll(".ci-select").forEach(sel => {
                 updateRowVisuals(sel);
-                sel.addEventListener("change", function(){
-                    updateRowVisuals(sel);
-                    recalcSummary();
-                });
+                sel.addEventListener("change", function(){ updateRowVisuals(sel); recalcSummary(); });
             });
-
             recalcSummary();
         });
     </script>

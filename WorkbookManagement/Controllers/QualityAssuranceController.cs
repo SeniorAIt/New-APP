@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using WorkbookManagement.Data;
 using WorkbookManagement.Models;
 
@@ -74,20 +73,8 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id);
             if (wb is null) return NotFound();
-
-            // Determine read-only using the correct enum: SubmissionBundleStatus
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
-            // Top nav needs this
-            ViewBag.Id = id;
-
             var data = ParseData(wb);
+            ViewBag.Id = id;
             return View(data.Overview);
         }
 
@@ -96,19 +83,6 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Guard writes when bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step1), new { id });
-            }
-
             var data = ParseData(wb);
             data.Overview = model;
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
@@ -129,19 +103,8 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id);
             if (wb is null) return NotFound();
-
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
-            // Top nav requires this
             ViewBag.Id = id;
-
-            return View(); // your existing Step2 view has no model
+            return View();
         }
 
         [HttpPost, ValidateAntiForgeryToken]
@@ -149,19 +112,6 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Block writes if read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step2), new { id });
-            }
-
-            // No data to persist for Guide; keep your timestamp update
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
@@ -180,17 +130,9 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
 
-            // Build per-category metrics using the same CI rules:
+            // Build per-category metrics using the same CI rules you used on the pages:
             // applicable = CI in {2,3}, compliant = CI==3, not compliant = CI==2
             (int criteria, int applicable, int comp, int ncomp, double compPct, double ncompPct) m;
 
@@ -220,95 +162,39 @@ namespace WorkbookManagement.Controllers
             ViewBag.CatComp = compPct.ToArray();   // 0..1 fractions (of applicable)
             ViewBag.CatNComp = ncompPct.ToArray();  // 0..1 fractions (of applicable)
 
-            // Helper: build a part breakdown (labels + comp + ncomp) for a section
-            static (string[] labels, double[] comp, double[] ncomp) BuildPartBreakdown(
-                Func<List<GelRow>?, (int, int, int, int, double, double)> calc,
-                List<GelRow>? rows)
-            {
-                var partLabels = new List<string>();
-                var partComp = new List<double>();
-                var partNComp = new List<double>();
+            // GEL part breakdown (e.g., "GEL 1.1", "GEL 1.2", ...)
+            var gelLabels = new List<string>();
+            var gelComp = new List<double>();
+            var gelNComp = new List<double>();
 
-                if (rows != null && rows.Count > 0)
+            if (data.GEL?.Rows != null && data.GEL.Rows.Count > 0)
+            {
+                var grouped = data.GEL.Rows
+                    .GroupBy(r => r.PartCode)
+                    .OrderBy(g => g.Key);
+
+                foreach (var g in grouped)
                 {
-                    var grouped = rows
-                        .GroupBy(r => r.PartCode)
-                        .OrderBy(g => g.Key);
-
-                    foreach (var g in grouped)
-                    {
-                        var mm = calc(g.ToList());
-                        partLabels.Add(g.Key);
-                        partComp.Add(mm.Item5);   // compPct
-                        partNComp.Add(mm.Item6);  // ncompPct
-                    }
+                    var mm = Calc(g.ToList());
+                    gelLabels.Add(g.Key);
+                    gelComp.Add(mm.compPct);
+                    gelNComp.Add(mm.ncompPct);
                 }
-
-                return (partLabels.ToArray(), partComp.ToArray(), partNComp.ToArray());
             }
 
-            // Compute breakdown for each section and place in ViewBags used by the view
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.GEL?.Rows);
-                ViewBag.GelLabels = l; ViewBag.GelComp = c; ViewBag.GelNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.SPR?.Rows);
-                ViewBag.SprLabels = l; ViewBag.SprComp = c; ViewBag.SprNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.TLA?.Rows);
-                ViewBag.TlaLabels = l; ViewBag.TlaComp = c; ViewBag.TlaNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.LSW?.Rows);
-                ViewBag.LswLabels = l; ViewBag.LswComp = c; ViewBag.LswNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.SCE?.Rows);
-                ViewBag.SceLabels = l; ViewBag.SceComp = c; ViewBag.SceNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.RLE?.Rows);
-                ViewBag.RleLabels = l; ViewBag.RleComp = c; ViewBag.RleNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.QMI?.Rows);
-                ViewBag.QmiLabels = l; ViewBag.QmiComp = c; ViewBag.QmiNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.SEC?.Rows);
-                ViewBag.SecLabels = l; ViewBag.SecComp = c; ViewBag.SecNComp = n;
-            }
-            {
-                var (l, c, n) = BuildPartBreakdown(Calc, data.LCR?.Rows);
-                ViewBag.LcrLabels = l; ViewBag.LcrComp = c; ViewBag.LcrNComp = n;
-            }
+            ViewBag.GelLabels = gelLabels.ToArray();
+            ViewBag.GelComp = gelComp.ToArray();
+            ViewBag.GelNComp = gelNComp.ToArray();
 
-            // Top nav needs this
             ViewBag.Id = id;
-
             return View(data.Summary); // Keep QaSummary as the page model (notes etc.)
         }
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step3(int id, QaSummary model, string? nav = "next")
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Block writes when bundle is read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step3), new { id });
-            }
-
             var data = ParseData(wb);
             data.Summary = model;
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
@@ -324,107 +210,13 @@ namespace WorkbookManagement.Controllers
         }
 
         // ===== STEP 4 — INFO =====
-        private const int MaxSignatureDataUrlLength = 500_000; // ~500 KB upper bound
-        private static readonly HashSet<string> AllowedSignatureMime = new(StringComparer.OrdinalIgnoreCase)
-{
-    "image/png", "image/jpeg"
-};
-
-        private static bool TryValidateSignatureDataUrl(string? dataUrl, out string normalized, out string? error)
-        {
-            normalized = string.Empty;
-            error = null;
-
-            if (string.IsNullOrWhiteSpace(dataUrl))
-            {
-                // Empty is allowed (means "no change")
-                return true;
-            }
-
-            dataUrl = dataUrl.Trim();
-
-            // Must be a data URL: data:[mime];base64,XXXXX
-            const string prefix = "data:";
-            var commaIndex = dataUrl.IndexOf(',');
-            if (!dataUrl.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) || commaIndex < 0)
-            {
-                error = "Invalid signature format.";
-                return false;
-            }
-
-            var header = dataUrl.Substring(0, commaIndex); // e.g. data:image/png;base64
-            var payload = dataUrl[(commaIndex + 1)..];     // base64 data
-
-            // Check base64 flag in header
-            if (!header.Contains(";base64", StringComparison.OrdinalIgnoreCase))
-            {
-                error = "Signature must be Base64 encoded.";
-                return false;
-            }
-
-            // Extract MIME
-            // header is like: data:image/png;base64
-            var mimePart = header[prefix.Length..]; // image/png;base64
-            var semi = mimePart.IndexOf(';');
-            var mime = semi > 0 ? mimePart.Substring(0, semi).Trim() : mimePart.Trim();
-
-            if (!AllowedSignatureMime.Contains(mime))
-            {
-                error = "Signature must be a PNG or JPEG image.";
-                return false;
-            }
-
-            // Size cap (data URL length is a decent proxy)
-            if (dataUrl.Length > MaxSignatureDataUrlLength)
-            {
-                error = "Signature image is too large. Please upload a smaller image or draw a lighter signature.";
-                return false;
-            }
-
-            // Base64 integrity
-            try
-            {
-                // Some browsers add newlines/spaces; strip whitespace
-                var base64 = string.Concat(payload.Where(c => !char.IsWhiteSpace(c)));
-                _ = Convert.FromBase64String(base64); // throws if invalid
-
-                // Normalize: rebuild the data URL compactly
-                normalized = $"data:{mime};base64,{base64}";
-                return true;
-            }
-            catch
-            {
-                error = "Signature image data is corrupted or invalid.";
-                return false;
-            }
-        }
-
         [HttpGet]
         public async Task<IActionResult> Step4(int id)
         {
             var wb = await LoadScopedAsync(id);
             if (wb is null) return NotFound();
-
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
-            ViewBag.Id = id; // top nav
-
             var data = ParseData(wb);
-
-            // Supply signature previews/timestamps for the view
-            ViewBag.OrgRepresentativeSignature = data.Info.OrgRepresentativeSignature ?? "";
-            ViewBag.AssessorSignature = data.Info.AssessorSignature ?? "";
-
-            string? fmt(DateTime? utc) => utc.HasValue ? utc.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm") : null;
-            ViewBag.OrgSignedAtDisplay = fmt(data.Info.OrgSignedAtUtc) ?? "";
-            ViewBag.AssessorSignedAtDisplay = fmt(data.Info.AssessorSignedAtUtc) ?? "";
-
+            ViewBag.Id = id;
             return View(data.Info);
         }
 
@@ -433,102 +225,8 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step4), new { id });
-            }
-
             var data = ParseData(wb);
-
-            // Update non-signature fields explicitly
-            data.Info.AppetdRegNo = model.AppetdRegNo;
-            data.Info.TradingName = model.TradingName;
-            data.Info.OrganisationType = model.OrganisationType;
-            data.Info.SiteDepartment = model.SiteDepartment;
-            data.Info.StreetAddress1 = model.StreetAddress1;
-            data.Info.StreetAddress2 = model.StreetAddress2;
-            data.Info.Town = model.Town;
-            data.Info.Province = model.Province;
-            data.Info.Suburb = model.Suburb;
-            data.Info.Zip = model.Zip;
-            data.Info.ContactPerson = model.ContactPerson;
-            data.Info.ContactNumber = model.ContactNumber;
-            data.Info.Email = model.Email;
-
-            data.Info.AssessmentDate = model.AssessmentDate;
-            data.Info.OrganisationInfo = model.OrganisationInfo;
-            data.Info.AccreditationStatus = model.AccreditationStatus;
-            data.Info.SupportingDocsSubmitted = model.SupportingDocsSubmitted;
-            data.Info.CaImplementationDeadlineDays = model.CaImplementationDeadlineDays;
-            data.Info.ReassessmentDeadlineDays = model.ReassessmentDeadlineDays;
-            data.Info.CaVerificationDate = model.CaVerificationDate;
-            data.Info.ReassessmentDate = model.ReassessmentDate;
-
-            data.Info.AssessorFullName = model.AssessorFullName;
-            data.Info.AssessorOrganisation = model.AssessorOrganisation;
-            data.Info.AssessorContactNumber = model.AssessorContactNumber;
-            data.Info.AssessorEmail = model.AssessorEmail;
-
-            // Read posted signature data URLs (pad OR upload)
-            var postedOrgSig = (Request?.Form?["OrgRepresentativeSignature"].ToString() ?? "").Trim();
-            var postedAssessorSig = (Request?.Form?["AssessorSignature"].ToString() ?? "").Trim();
-
-            // Validate signatures (if posted)
-            if (!string.IsNullOrEmpty(postedOrgSig))
-            {
-                if (!TryValidateSignatureDataUrl(postedOrgSig, out var normalized, out var err))
-                    ModelState.AddModelError(nameof(QaInfo.OrgRepresentativeSignature), err!);
-                else
-                    postedOrgSig = normalized;
-            }
-
-            if (!string.IsNullOrEmpty(postedAssessorSig))
-            {
-                if (!TryValidateSignatureDataUrl(postedAssessorSig, out var normalized, out var err))
-                    ModelState.AddModelError(nameof(QaInfo.AssessorSignature), err!);
-                else
-                    postedAssessorSig = normalized;
-            }
-
-            if (!ModelState.IsValid)
-            {
-                // Rehydrate ViewBags and return the same view with errors
-                ViewBag.ReadOnly = false;
-                ViewBag.Id = id;
-
-                ViewBag.OrgRepresentativeSignature = data.Info.OrgRepresentativeSignature ?? "";
-                ViewBag.AssessorSignature = data.Info.AssessorSignature ?? "";
-
-                string? fmt(DateTime? utc) => utc.HasValue ? utc.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm") : null;
-                ViewBag.OrgSignedAtDisplay = fmt(data.Info.OrgSignedAtUtc) ?? "";
-                ViewBag.AssessorSignedAtDisplay = fmt(data.Info.AssessorSignedAtUtc) ?? "";
-
-                return View(model);
-            }
-
-            var nowUtc = DateTime.UtcNow;
-
-            // Company user/org representative may set their signature
-            if (!string.IsNullOrEmpty(postedOrgSig) && (User.IsInRole("CompanyUser") || User.IsInRole("CompanyAdmin")))
-            {
-                data.Info.OrgRepresentativeSignature = postedOrgSig;
-                data.Info.OrgSignedAtUtc = nowUtc;
-            }
-
-            // SuperAdmin (assessor) may set the assessor signature
-            if (!string.IsNullOrEmpty(postedAssessorSig) && User.IsInRole("SuperAdmin"))
-            {
-                data.Info.AssessorSignature = postedAssessorSig;
-                data.Info.AssessorSignedAtUtc = nowUtc;
-            }
-
+            data.Info = model;
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
@@ -541,67 +239,24 @@ namespace WorkbookManagement.Controllers
             };
         }
 
-
-
         // ===== STEP 5 — GEL =====
         [HttpGet]
         public async Task<IActionResult> Step5(int id)
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.GEL ??= new QaGEL();
 
-            bool changed = false;
-
-            // Only seed & prefill when NOT read-only
-            if (!readOnly)
+            var seeded = EnsureGelSeed(data.GEL);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureGelSeed(data.GEL)) changed = true;
-
-                // Prefill header from INFO (Step 4) if target fields are blank
-                var info = data.Info;
-                var s = data.GEL;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(s.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { s.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(s.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { s.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(s.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { s.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((s.AssessmentDate == null || s.AssessmentDate == default) && info.AssessmentDate != null)
-                    { s.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((s.CaVerification == null || s.CaVerification == default) && info.CaVerificationDate != null)
-                    { s.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((s.ReassessmentDate == null || s.ReassessmentDate == default) && info.ReassessmentDate != null)
-                    { s.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // top nav
+            ViewBag.Id = id;
             return View(data.GEL);
         }
 
@@ -610,65 +265,8 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly) return RedirectToAction(nameof(Step5), new { id });
-
             var data = ParseData(wb);
-            data.GEL ??= new QaGEL();
-
-            // Ensure skeleton exists (parts/rows/text)
-            EnsureGelSeed(data.GEL);
-
-            if (model != null)
-            {
-                // Header fields
-                data.GEL.Organisation = model.Organisation;
-                data.GEL.Department = model.Department;
-                data.GEL.AppetdRegNo = model.AppetdRegNo;
-                data.GEL.AssessmentDate = model.AssessmentDate;
-                data.GEL.CaVerification = model.CaVerification;
-                data.GEL.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row answers by key; fallback to index
-                if (data.GEL.Rows != null && model.Rows != null)
-                {
-                    var map = data.GEL.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        if (map.TryGetValue($"{posted.PartCode}|{posted.Code}", out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.GEL.Rows.Count)
-                        {
-                            var t = data.GEL.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // No assignments to read-only computed properties here
-
+            data.GEL = model ?? new QaGEL();
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
@@ -687,59 +285,18 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.SPR ??= new QaSPR();
 
-            bool changed = false;
-
-            // Only seed & prefill when NOT read-only
-            if (!readOnly)
+            var seeded = EnsureSprSeed(data.SPR);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureSprSeed(data.SPR)) changed = true;
-
-                // Prefill header from INFO (Step 4) if target fields are blank
-                var info = data.Info;
-                var s = data.SPR;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(s.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { s.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(s.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { s.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(s.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { s.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((s.AssessmentDate == null || s.AssessmentDate == default) && info.AssessmentDate != null)
-                    { s.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((s.CaVerification == null || s.CaVerification == default) && info.CaVerificationDate != null)
-                    { s.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((s.ReassessmentDate == null || s.ReassessmentDate == default) && info.ReassessmentDate != null)
-                    { s.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // top nav
+            ViewBag.Id = id;
             return View(data.SPR);
         }
 
@@ -748,65 +305,8 @@ namespace WorkbookManagement.Controllers
         {
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
-
-            // Block writes if read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly) return RedirectToAction(nameof(Step6), new { id });
-
             var data = ParseData(wb);
-            data.SPR ??= new QaSPR();
-
-            // Ensure the static Parts/Rows skeleton exists
-            EnsureSprSeed(data.SPR);
-
-            if (model != null)
-            {
-                // Header fields (these are editable)
-                data.SPR.Organisation = model.Organisation;
-                data.SPR.Department = model.Department;
-                data.SPR.AppetdRegNo = model.AppetdRegNo;
-                data.SPR.AssessmentDate = model.AssessmentDate;
-                data.SPR.CaVerification = model.CaVerification;
-                data.SPR.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits by stable key PartCode|Code (fallback to index)
-                if (data.SPR.Rows != null && model.Rows != null)
-                {
-                    var byKey = data.SPR.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        if (byKey.TryGetValue($"{posted.PartCode}|{posted.Code}", out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.SPR.Rows.Count)
-                        {
-                            var t = data.SPR.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Do NOT assign data.SPR.Criteria/Compliant/NotCompliant/Percent etc. (they're computed)
-
+            data.SPR = model ?? new QaSPR();
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
@@ -826,57 +326,19 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.TLA ??= new QaTLA();
 
-            bool changed = false;
-
-            if (!readOnly)
+            // seed once
+            var seeded = EnsureTlaSeed(data.TLA);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureTlaSeed(data.TLA)) changed = true;
-
-                // Prefill header from INFO (Step 4) if blank
-                var info = data.Info;
-                var t = data.TLA;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(t.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { t.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(t.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { t.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(t.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { t.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((!t.AssessmentDate.HasValue || t.AssessmentDate == default) && info.AssessmentDate.HasValue)
-                    { t.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((!t.CaVerification.HasValue || t.CaVerification == default) && info.CaVerificationDate.HasValue)
-                    { t.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((!t.ReassessmentDate.HasValue || t.ReassessmentDate == default) && info.ReassessmentDate.HasValue)
-                    { t.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // top nav needs this
+            ViewBag.Id = id;
             return View(data.TLA);
         }
 
@@ -886,76 +348,20 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Block writes in read-only mode
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly) return RedirectToAction(nameof(Step7), new { id });
-
             var data = ParseData(wb);
-            data.TLA ??= new QaTLA();
-
-            // Make sure the static skeleton exists (safe to call repeatedly)
-            EnsureTlaSeed(data.TLA);
-
-            if (model != null)
-            {
-                // Header fields
-                data.TLA.Organisation = model.Organisation;
-                data.TLA.Department = model.Department;
-                data.TLA.AppetdRegNo = model.AppetdRegNo;
-                data.TLA.AssessmentDate = model.AssessmentDate;
-                data.TLA.CaVerification = model.CaVerification;
-                data.TLA.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits by key (PartCode|Code); fallback to index if needed
-                if (data.TLA.Rows != null && model.Rows != null)
-                {
-                    var byKey = data.TLA.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        if (byKey.TryGetValue($"{posted.PartCode}|{posted.Code}", out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.TLA.Rows.Count)
-                        {
-                            var t = data.TLA.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Do NOT assign computed fields like Criteria/Compliant/NotCompliant/NotApplicable/Percent
+            data.TLA = model ?? new QaTLA();
 
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            return (nav ?? "next").ToLowerInvariant() switch
+            switch ((nav ?? "next").ToLowerInvariant())
             {
-                "prev" => RedirectToAction(nameof(Step6), new { id }),
-                "save" => RedirectToAction("Index", "Workbooks"),
-                _ => RedirectToAction(nameof(Step8), new { id })
-            };
+                case "prev": return RedirectToAction(nameof(Step6), new { id });
+                case "save": return RedirectToAction("Index", "Workbooks");
+                default: return RedirectToAction(nameof(Step8), new { id });
+            }
         }
-
 
         // ===== STEP 8 — LSW =====
         [HttpGet]
@@ -964,57 +370,18 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.LSW ??= new QaLSW();
 
-            bool changed = false;
-
-            if (!readOnly)
+            var seeded = EnsureLswSeed(data.LSW);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureLswSeed(data.LSW)) changed = true;
-
-                // Prefill header from INFO (Step 4) if blank
-                var info = data.Info;
-                var lsw = data.LSW;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(lsw.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { lsw.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(lsw.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { lsw.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(lsw.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { lsw.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((!lsw.AssessmentDate.HasValue || lsw.AssessmentDate == default) && info.AssessmentDate.HasValue)
-                    { lsw.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((!lsw.CaVerification.HasValue || lsw.CaVerification == default) && info.CaVerificationDate.HasValue)
-                    { lsw.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((!lsw.ReassessmentDate.HasValue || lsw.ReassessmentDate == default) && info.ReassessmentDate.HasValue)
-                    { lsw.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // for top nav
+            ViewBag.Id = id;
             return View(data.LSW);
         }
 
@@ -1024,74 +391,19 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly) return RedirectToAction(nameof(Step8), new { id });
-
             var data = ParseData(wb);
-            data.LSW ??= new QaLSW();
-
-            // Make sure static skeleton exists (safe to call more than once)
-            EnsureLswSeed(data.LSW);
-
-            if (model != null)
-            {
-                // Header fields
-                data.LSW.Organisation = model.Organisation;
-                data.LSW.Department = model.Department;
-                data.LSW.AppetdRegNo = model.AppetdRegNo;
-                data.LSW.AssessmentDate = model.AssessmentDate;
-                data.LSW.CaVerification = model.CaVerification;
-                data.LSW.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits (by PartCode|Code; fall back to index if needed)
-                if (data.LSW.Rows != null && model.Rows != null)
-                {
-                    var byKey = data.LSW.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        if (byKey.TryGetValue($"{posted.PartCode}|{posted.Code}", out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.LSW.Rows.Count)
-                        {
-                            var t = data.LSW.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Don't assign computed props like Criteria/Compliant/NotCompliant/NotApplicable/Percent
+            data.LSW = model ?? new QaLSW();
 
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            return (nav ?? "next").ToLowerInvariant() switch
+            switch ((nav ?? "next").ToLowerInvariant())
             {
-                "prev" => RedirectToAction(nameof(Step7), new { id }),
-                "save" => RedirectToAction("Index", "Workbooks"),
-                _ => RedirectToAction(nameof(Step9), new { id })
-            };
+                case "prev": return RedirectToAction(nameof(Step7), new { id });
+                case "save": return RedirectToAction("Index", "Workbooks");
+                default: return RedirectToAction(nameof(Step9), new { id });
+            }
         }
 
         // ===== STEP 9 — SCE =====
@@ -1101,58 +413,18 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.SCE ??= new QaSCE();
 
-            bool changed = false;
-
-            // Only seed & prefill when NOT read-only
-            if (!readOnly)
+            var seeded = EnsureSceSeed(data.SCE);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureSceSeed(data.SCE)) changed = true;
-
-                // Prefill header from INFO (Step 4) if blank
-                var info = data.Info;
-                var s = data.SCE;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(s.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { s.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(s.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { s.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(s.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { s.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((!s.AssessmentDate.HasValue || s.AssessmentDate == default) && info.AssessmentDate.HasValue)
-                    { s.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((!s.CaVerification.HasValue || s.CaVerification == default) && info.CaVerificationDate.HasValue)
-                    { s.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((!s.ReassessmentDate.HasValue || s.ReassessmentDate == default) && info.ReassessmentDate.HasValue)
-                    { s.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // top nav
+            ViewBag.Id = id;
             return View(data.SCE);
         }
 
@@ -1162,74 +434,19 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly) return RedirectToAction(nameof(Step9), new { id });
-
             var data = ParseData(wb);
-            data.SCE ??= new QaSCE();
-
-            // Ensure static skeleton exists (idempotent)
-            EnsureSceSeed(data.SCE);
-
-            if (model != null)
-            {
-                // Header fields
-                data.SCE.Organisation = model.Organisation;
-                data.SCE.Department = model.Department;
-                data.SCE.AppetdRegNo = model.AppetdRegNo;
-                data.SCE.AssessmentDate = model.AssessmentDate;
-                data.SCE.CaVerification = model.CaVerification;
-                data.SCE.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits by PartCode|Code (fallback to index)
-                if (data.SCE.Rows != null && model.Rows != null)
-                {
-                    var map = data.SCE.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        if (map.TryGetValue($"{posted.PartCode}|{posted.Code}", out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.SCE.Rows.Count)
-                        {
-                            var t = data.SCE.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Do NOT assign computed fields (Criteria/Compliant/NotCompliant/NotApplicable/Percent)
+            data.SCE = model ?? new QaSCE();
 
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
             await _db.SaveChangesAsync();
 
-            return (nav ?? "next").ToLowerInvariant() switch
+            switch ((nav ?? "next").ToLowerInvariant())
             {
-                "prev" => RedirectToAction(nameof(Step8), new { id }),
-                "save" => RedirectToAction("Index", "Workbooks"),
-                _ => RedirectToAction(nameof(Step10), new { id })
-            };
+                case "prev": return RedirectToAction(nameof(Step8), new { id });
+                case "save": return RedirectToAction("Index", "Workbooks");
+                default: return RedirectToAction(nameof(Step10), new { id });
+            }
         }
 
         // ===== STEP 10 — RLE (Resource Management & Learning Environment) =====
@@ -1239,61 +456,20 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.RLE ??= new QaRLE();
 
-            bool changed = false;
-
-            // Seed & prefill only when NOT read-only
-            if (!readOnly)
+            var seeded = EnsureRleSeed(data.RLE);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureRleSeed(data.RLE)) changed = true;
-
-                // Prefill header from INFO (Step 4) if target fields are blank
-                var info = data.Info;
-                var rle = data.RLE;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(rle.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { rle.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(rle.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { rle.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(rle.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { rle.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((!rle.AssessmentDate.HasValue || rle.AssessmentDate == default) && info.AssessmentDate.HasValue)
-                    { rle.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((!rle.CaVerification.HasValue || rle.CaVerification == default) && info.CaVerificationDate.HasValue)
-                    { rle.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((!rle.ReassessmentDate.HasValue || rle.ReassessmentDate == default) && info.ReassessmentDate.HasValue)
-                    { rle.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // for top nav
+            ViewBag.Id = id;
             return View(data.RLE);
         }
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step10(int id, QaRLE model, string? nav = "next")
@@ -1301,68 +477,8 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step10), new { id });
-            }
-
             var data = ParseData(wb);
-            data.RLE ??= new QaRLE();
-
-            // Make sure the static skeleton exists
-            EnsureRleSeed(data.RLE);
-
-            if (model != null)
-            {
-                // Header fields
-                data.RLE.Organisation = model.Organisation;
-                data.RLE.Department = model.Department;
-                data.RLE.AppetdRegNo = model.AppetdRegNo;
-                data.RLE.AssessmentDate = model.AssessmentDate;
-                data.RLE.CaVerification = model.CaVerification;
-                data.RLE.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits (do NOT overwrite static text/codes)
-                if (data.RLE.Rows != null && model.Rows != null)
-                {
-                    var map = data.RLE.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        var key = $"{posted.PartCode}|{posted.Code}";
-                        if (map.TryGetValue(key, out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.RLE.Rows.Count)
-                        {
-                            // Fallback by index if key not found
-                            var t = data.RLE.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Do NOT assign computed summary props (Criteria/Compliant/NotCompliant/NotApplicable/Percent)
+            data.RLE = model ?? new QaRLE();
 
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
@@ -1383,61 +499,20 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.QMI ??= new QaQMI();
 
-            bool changed = false;
-
-            // Seed & prefill only when NOT read-only
-            if (!readOnly)
+            var seeded = EnsureQmiSeed(data.QMI);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureQmiSeed(data.QMI)) changed = true;
-
-                // Prefill header from INFO (Step 4) if target fields are blank
-                var info = data.Info;
-                var qmi = data.QMI;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(qmi.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { qmi.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(qmi.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { qmi.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(qmi.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { qmi.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((!qmi.AssessmentDate.HasValue || qmi.AssessmentDate == default) && info.AssessmentDate.HasValue)
-                    { qmi.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((!qmi.CaVerification.HasValue || qmi.CaVerification == default) && info.CaVerificationDate.HasValue)
-                    { qmi.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((!qmi.ReassessmentDate.HasValue || qmi.ReassessmentDate == default) && info.ReassessmentDate.HasValue)
-                    { qmi.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // for top nav
+            ViewBag.Id = id;
             return View(data.QMI);
         }
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step11(int id, QaQMI model, string? nav = "next")
@@ -1445,68 +520,8 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step11), new { id });
-            }
-
             var data = ParseData(wb);
-            data.QMI ??= new QaQMI();
-
-            // Ensure skeleton exists so we only update editable fields
-            EnsureQmiSeed(data.QMI);
-
-            if (model != null)
-            {
-                // Header fields
-                data.QMI.Organisation = model.Organisation;
-                data.QMI.Department = model.Department;
-                data.QMI.AppetdRegNo = model.AppetdRegNo;
-                data.QMI.AssessmentDate = model.AssessmentDate;
-                data.QMI.CaVerification = model.CaVerification;
-                data.QMI.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits (preserve static: PartCode/Code/Requirement/Action)
-                if (data.QMI.Rows != null && model.Rows != null)
-                {
-                    var map = data.QMI.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        var key = $"{posted.PartCode}|{posted.Code}";
-                        if (map.TryGetValue(key, out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.QMI.Rows.Count)
-                        {
-                            // Fallback by index
-                            var t = data.QMI.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Do NOT assign computed properties (Criteria/Compliant/NotCompliant/NotApplicable/Percent)
+            data.QMI = model ?? new QaQMI();
 
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
@@ -1527,61 +542,20 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.SEC ??= new QaSEC();
 
-            bool changed = false;
-
-            // Seed & prefill only when NOT read-only
-            if (!readOnly)
+            var seeded = EnsureSecSeed(data.SEC);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureSecSeed(data.SEC)) changed = true;
-
-                // Prefill header from INFO (Step 4) if target fields are blank
-                var info = data.Info;
-                var sec = data.SEC;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(sec.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { sec.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(sec.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { sec.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(sec.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { sec.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((!sec.AssessmentDate.HasValue || sec.AssessmentDate == default) && info.AssessmentDate.HasValue)
-                    { sec.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((!sec.CaVerification.HasValue || sec.CaVerification == default) && info.CaVerificationDate.HasValue)
-                    { sec.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((!sec.ReassessmentDate.HasValue || sec.ReassessmentDate == default) && info.ReassessmentDate.HasValue)
-                    { sec.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // top nav
+            ViewBag.Id = id;
             return View(data.SEC);
         }
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step12(int id, QaSEC model, string? nav = "next")
@@ -1589,68 +563,8 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step12), new { id });
-            }
-
             var data = ParseData(wb);
-            data.SEC ??= new QaSEC();
-
-            // Ensure the static skeleton exists so we only update editable fields
-            EnsureSecSeed(data.SEC);
-
-            if (model != null)
-            {
-                // Header fields
-                data.SEC.Organisation = model.Organisation;
-                data.SEC.Department = model.Department;
-                data.SEC.AppetdRegNo = model.AppetdRegNo;
-                data.SEC.AssessmentDate = model.AssessmentDate;
-                data.SEC.CaVerification = model.CaVerification;
-                data.SEC.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits, preserving static text (PartCode/Code/Requirement/Action)
-                if (data.SEC.Rows != null && model.Rows != null)
-                {
-                    var map = data.SEC.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        var key = $"{posted.PartCode}|{posted.Code}";
-                        if (map.TryGetValue(key, out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.SEC.Rows.Count)
-                        {
-                            // Fallback by index if key not found
-                            var t = data.SEC.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Don't assign computed props (Criteria/Compliant/NotCompliant/NotApplicable/Percent)
+            data.SEC = model ?? new QaSEC();
 
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
@@ -1663,7 +577,6 @@ namespace WorkbookManagement.Controllers
                 default: return RedirectToAction(nameof(Step13), new { id });
             }
         }
-
         // ===== STEP 13 — LCR (Legal Compliance & Reporting) =====
         [HttpGet]
         public async Task<IActionResult> Step13(int id)
@@ -1671,58 +584,18 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Read-only if parent bundle is Submitted/Approved
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            ViewBag.ReadOnly = readOnly;
-
             var data = ParseData(wb);
             data.LCR ??= new QaLCR();
 
-            bool changed = false;
-
-            // Only seed & prefill when NOT read-only
-            if (!readOnly)
+            var seeded = EnsureLcrSeed(data.LCR);
+            if (seeded)
             {
-                // Seed rubric rows once
-                if (EnsureLcrSeed(data.LCR)) changed = true;
-
-                // Prefill header from INFO (Step 4) if target fields are blank
-                var info = data.Info;
-                var lcr = data.LCR;
-                if (info != null)
-                {
-                    if (string.IsNullOrWhiteSpace(lcr.Organisation) && !string.IsNullOrWhiteSpace(info.TradingName))
-                    { lcr.Organisation = info.TradingName; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(lcr.Department) && !string.IsNullOrWhiteSpace(info.SiteDepartment))
-                    { lcr.Department = info.SiteDepartment; changed = true; }
-
-                    if (string.IsNullOrWhiteSpace(lcr.AppetdRegNo) && !string.IsNullOrWhiteSpace(info.AppetdRegNo))
-                    { lcr.AppetdRegNo = info.AppetdRegNo; changed = true; }
-
-                    if ((!lcr.AssessmentDate.HasValue || lcr.AssessmentDate == default) && info.AssessmentDate.HasValue)
-                    { lcr.AssessmentDate = info.AssessmentDate; changed = true; }
-
-                    if ((!lcr.CaVerification.HasValue || lcr.CaVerification == default) && info.CaVerificationDate.HasValue)
-                    { lcr.CaVerification = info.CaVerificationDate; changed = true; }
-
-                    if ((!lcr.ReassessmentDate.HasValue || lcr.ReassessmentDate == default) && info.ReassessmentDate.HasValue)
-                    { lcr.ReassessmentDate = info.ReassessmentDate; changed = true; }
-                }
-
-                if (changed)
-                {
-                    wb.Data = JsonSerializer.Serialize(data, JsonOpts);
-                    wb.UpdatedAt = DateTime.UtcNow;
-                    await _db.SaveChangesAsync();
-                }
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
+                wb.UpdatedAt = DateTime.UtcNow;
+                await _db.SaveChangesAsync();
             }
 
-            ViewBag.Id = id; // top nav
+            ViewBag.Id = id;
             return View(data.LCR);
         }
 
@@ -1732,87 +605,36 @@ namespace WorkbookManagement.Controllers
             var wb = await LoadScopedAsync(id, track: true);
             if (wb is null) return NotFound();
 
-            // Block writes when read-only
-            var bundle = wb.SubmissionId.HasValue
-                ? await _db.Submissions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == wb.SubmissionId.Value)
-                : null;
-            var readOnly = bundle?.Status == SubmissionBundleStatus.Submitted
-                        || bundle?.Status == SubmissionBundleStatus.Approved;
-            if (readOnly)
-            {
-                return RedirectToAction(nameof(Step13), new { id });
-            }
-
             var data = ParseData(wb);
-            data.LCR ??= new QaLCR();
-
-            // Ensure seeded/static content exists before we merge editable fields
-            EnsureLcrSeed(data.LCR);
-
-            if (model != null)
-            {
-                // Header fields
-                data.LCR.Organisation = model.Organisation;
-                data.LCR.Department = model.Department;
-                data.LCR.AppetdRegNo = model.AppetdRegNo;
-                data.LCR.AssessmentDate = model.AssessmentDate;
-                data.LCR.CaVerification = model.CaVerification;
-                data.LCR.ReassessmentDate = model.ReassessmentDate;
-
-                // Merge row edits while preserving static columns (PartCode/Code/Requirement/Action)
-                if (data.LCR.Rows != null && model.Rows != null)
-                {
-                    var map = data.LCR.Rows.ToDictionary(r => $"{r.PartCode}|{r.Code}");
-                    for (int i = 0; i < model.Rows.Count; i++)
-                    {
-                        var posted = model.Rows[i];
-                        if (posted is null) continue;
-
-                        var key = $"{posted.PartCode}|{posted.Code}";
-                        if (map.TryGetValue(key, out var target))
-                        {
-                            target.CI = posted.CI;
-                            target.CorrectiveAction = posted.CorrectiveAction;
-                            target.AssignedTo = posted.AssignedTo;
-                            target.CODate = posted.CODate;
-                            target.CO = posted.CO;
-                            target.VerifiedBy = posted.VerifiedBy;
-                        }
-                        else if (i < data.LCR.Rows.Count)
-                        {
-                            var t = data.LCR.Rows[i];
-                            t.CI = posted.CI;
-                            t.CorrectiveAction = posted.CorrectiveAction;
-                            t.AssignedTo = posted.AssignedTo;
-                            t.CODate = posted.CODate;
-                            t.CO = posted.CO;
-                            t.VerifiedBy = posted.VerifiedBy;
-                        }
-                    }
-                }
-            }
-
-            // Do not assign read-only computed props (Criteria/Compliant/NotCompliant/NotApplicable/Percent)
-
-            var action = (nav ?? "next").ToLowerInvariant();
-
-            // Mark the workbook completed only on Finish (next/default here)
-            if (action != "prev" && action != "save")
-            {
-                wb.Status = SubmissionStatus.Completed;
-            }
+            data.LCR = model ?? new QaLCR();
 
             wb.Data = JsonSerializer.Serialize(data, JsonOpts);
             wb.UpdatedAt = DateTime.UtcNow;
+
+            // Save changes before branching
             await _db.SaveChangesAsync();
 
-            return action switch
+            var action = (nav ?? "next").ToLowerInvariant();
+            switch (action)
             {
-                "prev" => RedirectToAction(nameof(Step12), new { id }),
-                "save" => RedirectToAction("Index", "Workbooks"),
-                _ => RedirectToAction("Index", "Workbooks"),
-            };
+                case "prev":
+                    return RedirectToAction(nameof(Step12), new { id });
+
+                case "save":
+                    // stay as-is (not completed), return to list
+                    return RedirectToAction("Index", "Workbooks");
+
+                case "next":
+                default:
+                    // ***** FINALIZE WORKBOOK 2 *****
+                    wb.Status = SubmissionStatus.Completed;
+                    wb.UpdatedAt = DateTime.UtcNow;
+                    await _db.SaveChangesAsync();
+                    return RedirectToAction("Index", "Workbooks");
+            }
         }
+
+
 
         // ===== Helpers =====
         private async Task<WorkbookSubmission?> LoadScopedAsync(int id, bool track = false)

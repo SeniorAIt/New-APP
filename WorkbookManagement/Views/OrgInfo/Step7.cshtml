@@ -3,12 +3,8 @@
     ViewData["Title"] = "Org Info — Page 7 of 8";
     var id = (int)ViewBag.Id;
 
-    // Show "Save Organisation Profile" only when editing the standalone profile (SubmissionId == null)
-    bool canSaveProfile = ViewBag.CanSaveProfile == true;
-
-    // TYPE options (blank first)
+    // TYPE options (no blank entry here)
     var typeOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
-        new("", ""),
         new("Short Course (Non Credit)", "Short Course (Non Credit)"),
         new("Short Course (Credit Bearing)", "Short Course (Credit Bearing)"),
         new("Skills Programmme", "Skills Programmme"),
@@ -38,9 +34,14 @@
         new("Professional Doctorate", "Professional Doctorate"),
     };
 
+    // NQF LEVEL options (no blank; values are strings 1..10)
+    var nqfOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("1","1"), new("2","2"), new("3","3"), new("4","4"), new("5","5"),
+        new("6","6"), new("7","7"), new("8","8"), new("9","9"), new("10","10"),
+    };
+
     // MODE OF DELIVERY
     var modeOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
-        new("", ""),
         new("Full-Time (In Person)", "Full-Time (In Person)"),
         new("Part-Time (In Person)", "Part-Time (In Person)"),
         new("Distance Learning", "Distance Learning"),
@@ -52,7 +53,6 @@
 
     // CESM
     var cesmOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
-        new("", ""),
         new("Agriculture", "Agriculture"),
         new("Agriculture Operations & Related Sciences", "Agriculture Operations & Related Sciences"),
         new("Architecture & The Built Environment", "Architecture & The Built Environment"),
@@ -78,7 +78,6 @@
 
     // Registered / Accredited Status
     var statusOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
-        new("", ""),
         new("Active", "Active"),
         new("Pending", "Pending"),
         new("Expired", "Expired"),
@@ -86,9 +85,9 @@
         new("N/A", "N/A"),
     };
 
-    // Yes/No for Suitably Qualified Staff (binds to bool?)
+    // Yes/No for Suitably Qualified Staff (binds to bool?) — no blank
     var yesNoOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
-        new("", ""), new("Yes","true"), new("No","false")
+        new("Yes","true"), new("No","false")
     };
 }
 
@@ -121,6 +120,15 @@
         height: auto;
     }
 
+    /* Very faint vertical separators between columns */
+    .tight-table th + th, .tight-table td + td {
+        border-left: 1px solid rgba(0,0,0,.06);
+    }
+
+    .tight-table th:first-child, .tight-table td:first-child {
+        border-left: none;
+    }
+
     th.col-actions, td.col-actions, td.td-actions {
         min-width: 130px;
         width: 130px;
@@ -131,8 +139,6 @@
 
     .btn-remove-row {
         white-space: nowrap;
-        writing-mode: horizontal-tb !important;
-        transform: none !important;
         padding: .125rem .6rem;
         line-height: 1.1;
     }
@@ -220,9 +226,6 @@
     <h3>PART 5: - QUALIFICATIONS / PROGRAMMES / COURSES</h3>
 
     <form method="post" asp-action="Step7" asp-route-id="@id">
-        @Html.AntiForgeryToken()
-        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-
         <div class="box">
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <h6 class="mb-0">List</h6>
@@ -244,7 +247,7 @@
                             <th class="col-nqf">NQF LEVEL</th>
                             <th class="col-credits">CREDITS</th>
                             <th class="col-saqafield">SAQA FIELD OF STUDY</th>
-                            <th class="col-cesm">CESM</th>
+                            <th class="col-cesm"><abbr title="Classification of Educational Subject Matter">CESM</abbr></th>
                             <th class="col-regstatus">REGISTERED / ACCREDITED STATUS</th>
                             <th class="col-date">DATE</th>
                             <th class="col-suitstaff">SUITABLY QUALIFIED STAFF</th>
@@ -260,7 +263,9 @@
                                     <input asp-for="Items[@i].Code" class="form-control form-control-sm row-code" readonly />
                                 </td>
                                 <td class="col-type">
-                                    <select asp-for="Items[@i].Type" asp-items="typeOptions" class="form-select form-select-sm type-select"></select>
+                                    <select asp-for="Items[@i].Type" asp-items="typeOptions" class="form-select form-select-sm type-select">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
                                 <td class="col-saqa"><input asp-for="Items[@i].SAQAId" class="form-control form-control-sm" /></td>
                                 <td class="col-qualcode"><input asp-for="Items[@i].QualificationCode" class="form-control form-control-sm" /></td>
@@ -268,20 +273,32 @@
                                 <td class="col-ofo"><input asp-for="Items[@i].OFOCode" class="form-control form-control-sm" /></td>
                                 <td class="col-name"><input asp-for="Items[@i].Name" class="form-control form-control-sm" /></td>
                                 <td class="col-mode">
-                                    <select asp-for="Items[@i].ModeOfDelivery" asp-items="modeOptions" class="form-select form-select-sm"></select>
+                                    <select asp-for="Items[@i].ModeOfDelivery" asp-items="modeOptions" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
-                                <td class="col-nqf"><input asp-for="Items[@i].NQFLevel" class="form-control form-control-sm" /></td>
+                                <td class="col-nqf">
+                                    <select asp-for="Items[@i].NQFLevel" asp-items="nqfOptions" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
                                 <td class="col-credits"><input asp-for="Items[@i].Credits" type="number" min="0" class="form-control form-control-sm" /></td>
                                 <td class="col-saqafield"><input asp-for="Items[@i].SAQAFieldOfStudy" class="form-control form-control-sm" /></td>
                                 <td class="col-cesm">
-                                    <select asp-for="Items[@i].CESM" asp-items="cesmOptions" class="form-select form-select-sm"></select>
+                                    <select asp-for="Items[@i].CESM" asp-items="cesmOptions" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
                                 <td class="col-regstatus">
-                                    <select asp-for="Items[@i].RegisteredAccreditedStatus" asp-items="statusOptions" class="form-select form-select-sm"></select>
+                                    <select asp-for="Items[@i].RegisteredAccreditedStatus" asp-items="statusOptions" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
                                 <td class="col-date"><input asp-for="Items[@i].StatusDate" type="date" class="form-control form-control-sm" /></td>
                                 <td class="col-suitstaff">
-                                    <select asp-for="Items[@i].SuitablyQualifiedStaff" asp-items="yesNoOptions" class="form-select form-select-sm"></select>
+                                    <select asp-for="Items[@i].SuitablyQualifiedStaff" asp-items="yesNoOptions" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
                                 <td class="col-ratio"><input asp-for="Items[@i].StudentStaffRatio" class="form-control form-control-sm" placeholder="e.g. 1:25" /></td>
                                 <td class="col-actions">
@@ -297,16 +314,6 @@
         <div class="d-flex gap-2 justify-content-end mb-5">
             <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
             <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
-
-            @* Only when editing the standalone Org Info profile *@
-            @if (canSaveProfile)
-            {
-                <button class="btn btn-outline-success" name="nav" value="saveprofile" type="submit"
-                        title="Save these details to your Organisation profile for future submissions">
-                    Save Organisation Profile
-                </button>
-            }
-
             <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
         </div>
     </form>
@@ -318,7 +325,7 @@
         <td class="col-code"><input name="Items[__idx__].Code" class="form-control form-control-sm row-code" readonly /></td>
         <td class="col-type">
             <select name="Items[__idx__].Type" class="form-select form-select-sm type-select">
-                <option value=""></option>
+                <option value="" selected hidden>Select</option>
                 <option>Short Course (Non Credit)</option>
                 <option>Short Course (Credit Bearing)</option>
                 <option>Skills Programmme</option>
@@ -355,7 +362,7 @@
         <td class="col-name"><input name="Items[__idx__].Name" class="form-control form-control-sm" /></td>
         <td class="col-mode">
             <select name="Items[__idx__].ModeOfDelivery" class="form-select form-select-sm">
-                <option value=""></option>
+                <option value="" selected hidden>Select</option>
                 <option>Full-Time (In Person)</option>
                 <option>Part-Time (In Person)</option>
                 <option>Distance Learning</option>
@@ -365,12 +372,26 @@
                 <option>Other</option>
             </select>
         </td>
-        <td class="col-nqf"><input name="Items[__idx__].NQFLevel" class="form-control form-control-sm" /></td>
+        <td class="col-nqf">
+            <select name="Items[__idx__].NQFLevel" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option>1</option>
+                <option>2</option>
+                <option>3</option>
+                <option>4</option>
+                <option>5</option>
+                <option>6</option>
+                <option>7</option>
+                <option>8</option>
+                <option>9</option>
+                <option>10</option>
+            </select>
+        </td>
         <td class="col-credits"><input name="Items[__idx__].Credits" type="number" min="0" class="form-control form-control-sm" /></td>
         <td class="col-saqafield"><input name="Items[__idx__].SAQAFieldOfStudy" class="form-control form-control-sm" /></td>
         <td class="col-cesm">
             <select name="Items[__idx__].CESM" class="form-select form-select-sm">
-                <option value=""></option>
+                <option value="" selected hidden>Select</option>
                 <option>Agriculture</option>
                 <option>Agriculture Operations &amp; Related Sciences</option>
                 <option>Architecture &amp; The Built Environment</option>
@@ -396,7 +417,7 @@
         </td>
         <td class="col-regstatus">
             <select name="Items[__idx__].RegisteredAccreditedStatus" class="form-select form-select-sm">
-                <option value=""></option>
+                <option value="" selected hidden>Select</option>
                 <option>Active</option>
                 <option>Pending</option>
                 <option>Expired</option>
@@ -407,7 +428,7 @@
         <td class="col-date"><input name="Items[__idx__].StatusDate" type="date" class="form-control form-control-sm" /></td>
         <td class="col-suitstaff">
             <select name="Items[__idx__].SuitablyQualifiedStaff" class="form-select form-select-sm">
-                <option value=""></option>
+                <option value="" selected hidden>Select</option>
                 <option value="true">Yes</option>
                 <option value="false">No</option>
             </select>
@@ -426,16 +447,16 @@
           const body = document.querySelector('#qualTable tbody');
           const tpl  = document.querySelector('#row-template').innerHTML;
           const add  = document.getElementById('addRowBtn');
-          // Parse Razor value to avoid TS/JS parsing warnings
-          let nextIndex = parseInt('@(Model.Items?.Count ?? 0)', 10) || 0;
+
+          // Emit a plain number to avoid TS1109 warnings
+          let nextIndex = @((Model.Items?.Count ?? 0));
 
           function pad3(n){ return String(n).padStart(3,'0'); }
 
-          // Produce initials from Type (remove possessive 's; strip () and punctuation)
+          // produce initials from Type (strip () and punctuation for stable codes)
           function initialsFromType(s){
             if(!s) return "";
-            s = s.replace(/'s\b/gi, "");
-            s = s.replace(/[()]/g, " ");
+            s = s.replace(/'s\b/gi, "").replace(/[()]/g, " ");
             const words = s.split(/[^A-Za-z]+/).filter(Boolean);
             return words.map(w => w[0]).join("").toUpperCase();
           }
@@ -446,13 +467,11 @@
               const typeSel = tr.querySelector('.type-select');
               const typeText = typeSel ? (typeSel.options[typeSel.selectedIndex]?.text ?? "") : "";
               const codeInput = tr.querySelector('.row-code');
-              if (codeInput){
-                codeInput.value = pad3(i+1) + initialsFromType(typeText);
-              }
+              if (codeInput) codeInput.value = pad3(i+1) + initialsFromType(typeText);
             });
           }
 
-          // initial code assignment
+          // initial assignment for existing rows
           updateCodes();
 
           // add row
@@ -472,11 +491,9 @@
             }
           });
 
-          // recalc when Type changes
+          // re-code when Type changes
           body.addEventListener('change', (e) => {
-            if (e.target && e.target.classList.contains('type-select')) {
-              updateCodes();
-            }
+            if (e.target && e.target.classList.contains('type-select')) updateCodes();
           });
         })();
     </script>

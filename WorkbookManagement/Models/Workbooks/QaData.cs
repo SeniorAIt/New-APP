@@ -44,7 +44,7 @@ namespace WorkbookManagement.Models
     }
 
     // Page 4 — Info
-    public partial class QaInfo
+    public class QaInfo
     {
         // Company / Institution Details
         public string? AppetdRegNo { get; set; }

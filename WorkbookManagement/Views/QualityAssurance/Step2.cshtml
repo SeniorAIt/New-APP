@@ -1,11 +1,7 @@
 ﻿@{
     ViewData["Title"] = "QA — Page 2 of 13 (Guide)";
     var id = (int)ViewBag.Id;
-    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
 }
-
-@* Top step tabs *@
-@await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
 
 <style>
     .box {
@@ -103,21 +99,14 @@
 
     <form method="post" asp-action="Step2" asp-route-id="@id">
         @Html.AntiForgeryToken()
-
-        @* If inputs are added later, keep them inside this fieldset so read-only works *@
-        <fieldset @(readOnly ? "disabled" : null)>
-            @* (no inputs on this page) *@
-        </fieldset>
-
-        @* Footer buttons from QANav:
-           - show Previous on this page
-           - show Save Draft
-           - label the submit "Next"
-        *@
-        @{
-            ViewData["QaNavMode"] = "footer";
-            ViewData["QaFinishLabel"] = "Next";
-        }
-        @await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+        <div class="d-flex justify-content-between mb-4">
+            <div>
+                <button type="submit" name="nav" value="prev" class="btn btn-outline-secondary btn-sm">Previous</button>
+            </div>
+            <div>
+                <button type="submit" name="nav" value="save" class="btn btn-outline-primary btn-sm me-2">Save Draft</button>
+                <button type="submit" name="nav" value="next" class="btn btn-primary btn-sm">Next</button>
+            </div>
+        </div>
     </form>
 </div>

@@ -1,7 +1,5 @@
 ﻿// File: Models/Workbooks/Submission.cs
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using WorkbookManagement.Areas.Identity.Data; // for ApplicationUser
 
 namespace WorkbookManagement.Models
 {
@@ -34,7 +32,7 @@ namespace WorkbookManagement.Models
 
         public SubmissionBundleStatus Status { get; set; } = SubmissionBundleStatus.Draft;
 
-        // --- Current decision (from the most recent review) ---
+        // --- Admin decision metadata (optional but recommended) ---
         [MaxLength(2000)]
         public string? DecisionNote { get; set; }
 
@@ -43,22 +41,8 @@ namespace WorkbookManagement.Models
 
         public DateTime? DecidedAtUtc { get; set; }
 
-        // --- Previous decision (preserved across re-submissions) ---
-        public SubmissionBundleStatus? LastDecisionStatus { get; set; }
-        public DateTime? LastDecidedAtUtc { get; set; }
-
-        public string? LastDecidedByUserId { get; set; }
-        public ApplicationUser? LastDecidedByUser { get; set; }
-
-        public string? LastDecisionNote { get; set; }
-
-        // Convenience flags
-        [NotMapped]
-        public bool HasPreviousDecision => LastDecisionStatus.HasValue;
-
-        public bool IsTerminal =>
-            Status == SubmissionBundleStatus.Approved ||
-            Status == SubmissionBundleStatus.Rejected;
+        // Convenience: true if Approved/Rejected
+        public bool IsTerminal => Status == SubmissionBundleStatus.Approved || Status == SubmissionBundleStatus.Rejected;
 
         public ICollection<WorkbookSubmission> Workbooks { get; set; } = new List<WorkbookSubmission>();
     }

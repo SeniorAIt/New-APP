@@ -30,15 +30,6 @@
                 </button>
 
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    @{
-                        // null-safe helpers
-                        var isAuthenticated = (User?.Identity?.IsAuthenticated ?? false);
-                        var isSuperAdmin = (User?.IsInRole("SuperAdmin") ?? false);
-                        var isCompanyUser = (User?.IsInRole("CompanyUser") ?? false);
-                        var isCompanyAdmin = (User?.IsInRole("CompanyAdmin") ?? false); // if you use this role
-                        var showCompanyMenus = isAuthenticated && !isSuperAdmin && (isCompanyUser || isCompanyAdmin);
-                    }
-
                     <!-- left side links -->
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
@@ -46,44 +37,32 @@
                         </li>
 
                         @* SuperAdmin-only items *@
-                        @if (isSuperAdmin)
+                        @if (User.IsInRole("SuperAdmin"))
                         {
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Admin</a>
                                 <ul class="dropdown-menu dropdown-menu-end">
                                     <li><a class="dropdown-item" asp-area="Admin" asp-controller="Companies" asp-action="Index">Companies</a></li>
                                     <li><a class="dropdown-item" asp-area="Admin" asp-controller="Users" asp-action="Index">Users</a></li>
-                                    <li><a class="dropdown-item" asp-area="Admin" asp-controller="Announcements" asp-action="Index">Announcements</a></li>
-                                    <li><a class="dropdown-item" asp-area="Admin" asp-controller="Calendar" asp-action="Index">Calendar</a></li>
                                 </ul>
                             </li>
 
-                            @* Top-level link to the Review Queue *@
+                            @* NEW: Top-level tab for the SuperAdmin review inbox *@
                             <li class="nav-item">
-                                <a class="nav-link" asp-area="Admin" asp-controller="Reviews" asp-action="Index">
-                                    Review Queue
-                                </a>
-                            </li>
-
-                            @* NEW: SuperAdmin should also be able to view Documents (root area) *@
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Documents" asp-action="Index">
-                                    Documents
+                                <a class="nav-link" asp-area="Admin" asp-controller="Submissions" asp-action="Index">
+                                    Admin Submissions
                                 </a>
                             </li>
                         }
 
-                        @* Company-side menus: visible to CompanyAdmin/CompanyUser, hidden from SuperAdmin *@
-                        @if (showCompanyMenus)
+                        @* Show Workbooks/Submissions only when authenticated *@
+                        @if (User?.Identity?.IsAuthenticated ?? false)
                         {
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Workbooks" asp-action="Index">Workbooks</a>
                             </li>
                             <li class="nav-item">
                                 <a class="nav-link" asp-area="" asp-controller="Submissions" asp-action="Index">Submissions</a>
-                            </li>
-                            <li class="nav-item">
-                                <a class="nav-link" asp-area="" asp-controller="Documents" asp-action="Index">Documents</a>
                             </li>
                         }
                     </ul>
@@ -100,8 +79,6 @@
     <!-- Main content grows to fill available space so footer sits at bottom -->
     <div class="container flex-grow-1 my-3">
         <main role="main" class="pb-3">
-            <!-- Global alerts -->
-            <partial name="_Alerts" />
             @RenderBody()
         </main>
     </div>

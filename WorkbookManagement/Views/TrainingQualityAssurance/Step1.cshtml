@@ -2,15 +2,7 @@
 @{
     ViewData["Title"] = "Guide – Pre-Delivery QA";
     var id = (int)ViewBag.Id;
-    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
-
-    // IMPORTANT: set these BEFORE rendering the header partial
-    ViewData["TqaActiveStep"] = 1;   // Step 1
-    ViewData["TqaTotalSteps"] = 8;   // TQA has 8 steps
 }
-
-@* Top step tabs + progress bar *@
-@await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
 
 <h6 class="text-uppercase fw-bold mb-2">GUIDE:- PRE-DELIVERY QUALITY ASSURANCE</h6>
 
@@ -54,14 +46,10 @@
 
 <form method="post" asp-action="Step1" asp-route-id="@id">
     @Html.AntiForgeryToken()
-
-    @* Footer buttons from TQA Nav *@
-    @{
-        ViewData["TqaNavMode"] = "footer";
-        ViewData["TqaFinishLabel"] = "Next";   // Step 1 shows "Next"
-                                               // DO NOT set TqaTotalSteps here; we already set it to 8 above
-    }
-    @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+    <div class="d-flex gap-2 justify-content-end">
+        <button class="btn btn-secondary" name="nav" value="save" type="submit">Save Draft</button>
+        <button class="btn btn-primary" name="nav" value="next" type="submit">Next</button>
+    </div>
 </form>
 
 @section Styles {
@@ -104,7 +92,8 @@
             padding: .05rem .4rem;
             font-weight: 600;
             background: #fff;
-            margin: 0 .25rem;
+            margin-left: .25rem;
+            margin-right: .25rem;
         }
     </style>
 }

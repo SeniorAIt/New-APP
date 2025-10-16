@@ -16,17 +16,6 @@ namespace WorkbookManagement.Areas.Admin.Controllers
 
         private string CurrentUserId => User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 
-        // ===== Submission-level read-only rule (same as public area) =====
-        // - Approved  => everyone read-only
-        // - Submitted => SuperAdmin can edit; company users read-only (but we're in Admin, so SuperAdmin = editable)
-        // - Else      => editable
-        private bool IsReadOnlyForCurrentUser(SubmissionBundleStatus? status)
-        {
-            if (status == SubmissionBundleStatus.Approved) return true;
-            if (status == SubmissionBundleStatus.Submitted) return !User.IsInRole("SuperAdmin");
-            return false; // Draft / InProgress / Completed
-        }
-
         // GET: /Admin/Submissions
         // Supports filtering by free-text (company or owner email) and bundle Status
         [HttpGet]
@@ -53,7 +42,6 @@ namespace WorkbookManagement.Areas.Admin.Controllers
 
             var list = await query
                 .OrderByDescending(s => s.CreatedAt)
-                .AsNoTracking()
                 .ToListAsync();
 
             // feed the view so the form keeps the current filters
@@ -71,16 +59,10 @@ namespace WorkbookManagement.Areas.Admin.Controllers
                 .Include(s => s.Company)
                 .Include(s => s.OwnerUser)
                 .Include(s => s.DecidedByUser)
-                .Include(s => s.LastDecidedByUser)   // <-- needed for "Previous decision" panel
                 .Include(s => s.Workbooks)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (sub == null) return NotFound();
-
-            // Expose submission-level flags for banners/buttons/partials
-            ViewBag.BundleStatus = sub.Status;
-            ViewBag.ReadOnly = IsReadOnlyForCurrentUser(sub.Status);
-
             return View(sub);
         }
 
@@ -124,15 +106,11 @@ namespace WorkbookManagement.Areas.Admin.Controllers
                 return RedirectToAction(nameof(Details), new { id });
             }
 
-            // Record audit/meta for the current decision
+            // Record audit/meta
             sub.DecisionNote = string.IsNullOrWhiteSpace(reason) ? null : reason!.Trim();
             sub.DecidedByUserId = CurrentUserId;
             sub.DecidedAtUtc = DateTime.UtcNow;
             sub.UpdatedAt = DateTime.UtcNow;
-
-            // NOTE:
-            // Do NOT touch LastDecision* here. Those are set when the company *resubmits*
-            // (so we preserve the previous decision for the next review cycle).
 
             await _db.SaveChangesAsync();
 

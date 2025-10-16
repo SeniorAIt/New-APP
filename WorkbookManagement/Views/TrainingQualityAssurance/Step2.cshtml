@@ -2,243 +2,180 @@
 @{
     ViewData["Title"] = "Part 1: General Information";
     var id = (int)ViewBag.Id;
-    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
 
     // Compliance Overview helpers
     dynamic overall = ViewBag.CO_Overall;
     var rows = ViewBag.CO_Rows as IEnumerable<dynamic>;
     Func<double, string> PctFmt = p => (p * 100.0).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace(".", ",") + "%";
-
-    // Nav setup
-    ViewData["TqaActiveStep"] = 2;
-    ViewData["TqaTotalSteps"] = 8;
 }
 
-@* Top step tabs + progress bar *@
-@await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+<h6 class="text-uppercase fw-bold mb-2">PART 1:- GENERAL INFORMATION</h6>
 
-<div class="container-xxl px-0">
-    <h2 class="h6 text-uppercase fw-bold mb-3">Part 1: General Information</h2>
-
-    <form asp-action="Step2" asp-route-id="@id" method="post">
-        @Html.AntiForgeryToken()
-
-        <fieldset @(readOnly ? "disabled" : null)>
-            <div class="row g-3">
-                <!-- LEFT: Provider & Programme -->
-                <div class="col-xl-8">
-                    <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white text-uppercase small fw-semibold">General Details</div>
-                        <div class="card-body">
-                            <div class="row g-3 align-items-center">
-                                <div class="col-12">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Training Provider</label>
-                                    <input asp-for="TrainingProvider" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Programme Name</label>
-                                    <input asp-for="ProgrammeName" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Qualification/Course Title</label>
-                                    <input asp-for="QualificationCourseTitle" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">SAQA ID</label>
-                                    <input asp-for="SaqaId" class="form-control form-control-sm" />
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">QCTO ID</label>
-                                    <input asp-for="QctoId" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-md-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">NQF Level</label>
-                                    <select asp-for="NqfLevel" class="form-select form-select-sm">
-                                        <option value="">Select…</option>
-                                        <option value="1">1</option>
-                                        <option value="2">2</option>
-                                        <option value="3">3</option>
-                                        <option value="4">4</option>
-                                        <option value="5">5</option>
-                                        <option value="6">6</option>
-                                        <option value="7">7</option>
-                                        <option value="8">8</option>
-                                        <option value="Non Compliant">Non Compliant</option>
-                                    </select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Credits</label>
-                                    <input asp-for="Credits" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Site Name/Location</label>
-                                    <input asp-for="SiteNameLocation" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Target Learner Group</label>
-                                    <input asp-for="TargetLearnerGroup" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-12">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Site Representative Name</label>
-                                    <input asp-for="SiteRepresentativeName" class="form-control form-control-sm" />
-                                </div>
-
-                                <div class="col-md-8">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">QA Assessor Name</label>
-                                    <input asp-for="QaAssessorName" class="form-control form-control-sm" />
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Contact No.</label>
-                                    <input asp-for="QaAssessorContactNumber" class="form-control form-control-sm" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+<form asp-action="Step2" asp-route-id="@id" method="post">
+    <div class="row g-3">
+        <div class="col-lg-8">
+            <div class="border p-3">
+                <div class="row align-items-center mb-2">
+                    <div class="col-4 label-col">TRAINING PROVIDER:</div>
+                    <div class="col"><input asp-for="TrainingProvider" class="form-control line-input" /></div>
                 </div>
 
-                <!-- RIGHT: Schedule & Contact -->
-                <div class="col-xl-4">
-                    <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white text-uppercase small fw-semibold">Schedule & Contact</div>
-                        <div class="card-body">
-                            <div class="row g-3 align-items-center">
-                                <div class="col-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">No. of Learners</label>
-                                    <input asp-for="NumberOfLearners" class="form-control form-control-sm text-center" />
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Province</label>
-                                    <select asp-for="Province" class="form-select form-select-sm">
-                                        <option value="">Select…</option>
-                                        <option>Eastern Cape</option>
-                                        <option>Free State</option>
-                                        <option>Gauteng</option>
-                                        <option>KwaZulu-Natal</option>
-                                        <option>Limpopo</option>
-                                        <option>Mpumalanga</option>
-                                        <option>North West</option>
-                                        <option>Northern Cape</option>
-                                        <option>Western Cape</option>
-                                    </select>
-                                </div>
+                <div class="row align-items-center mb-2">
+                    <div class="col-4 label-col">PROGRAMME NAME:</div>
+                    <div class="col"><input asp-for="ProgrammeName" class="form-control line-input" /></div>
+                </div>
 
-                                <div class="col-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Start Date</label>
-                                    <input asp-for="StartDate" type="date" class="form-control form-control-sm" />
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">End Date</label>
-                                    <input asp-for="EndDate" type="date" class="form-control form-control-sm" />
-                                </div>
+                <div class="row align-items-center mb-2">
+                    <div class="col-4 label-col">QUALIFICATION/COURSE TITLE:</div>
+                    <div class="col"><input asp-for="QualificationCourseTitle" class="form-control line-input" /></div>
+                </div>
 
-                                <div class="col-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Site Assessment Date</label>
-                                    <input asp-for="SiteAssessmentDate" type="date" class="form-control form-control-sm" />
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label text-uppercase tiny-lbl mb-1">Contact Number</label>
-                                    <input asp-for="SiteRepresentativeContactNumber" class="form-control form-control-sm" />
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="row align-items-center mb-2">
+                    <div class="col-3 label-col">SAQA ID:</div>
+                    <div class="col-3"><input asp-for="SaqaId" class="form-control line-input" /></div>
+                    <div class="col-3 label-col">QCTO ID:</div>
+                    <div class="col-3"><input asp-for="QctoId" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-3 label-col">NQF LEVEL:</div>
+                    <div class="col-3"><input asp-for="NqfLevel" class="form-control line-input" /></div>
+                    <div class="col-3 label-col">CREDITS:</div>
+                    <div class="col-3"><input asp-for="Credits" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-4 label-col">SITE NAME/LOCATION:</div>
+                    <div class="col"><input asp-for="SiteNameLocation" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-4 label-col">TARGET LEARNER GROUP:</div>
+                    <div class="col"><input asp-for="TargetLearnerGroup" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-5 label-col">SITE REPRESENTATIVE NAME:</div>
+                    <div class="col-7"><input asp-for="SiteRepresentativeName" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-3 label-col">QA ASSESSOR NAME:</div>
+                    <div class="col-5"><input asp-for="QaAssessorName" class="form-control line-input" /></div>
+                    <div class="col-2 label-col">CONTACT NO.:</div>
+                    <div class="col-2"><input asp-for="QaAssessorContactNumber" class="form-control line-input" /></div>
                 </div>
             </div>
+        </div>
 
-            <!-- Compliance Overview -->
-            <div class="card shadow-sm border-0 mt-4">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <span class="text-uppercase small fw-semibold">Compliance Overview</span>
-                    <div class="legend small">
-                        <span class="badge bg-success me-1">3</span>Compliant
-                        <span class="badge bg-danger ms-3 me-1">2</span>Not Compliant
-                        <span class="badge bg-warning text-dark ms-3 me-1">1</span>N/A
-                    </div>
+        <div class="col-lg-4">
+            <div class="border p-3 h-100">
+                <div class="row align-items-center mb-2">
+                    <div class="col-6 label-col">No. OF LEARNERS:</div>
+                    <div class="col-6"><input asp-for="NumberOfLearners" class="form-control line-input text-center" /></div>
                 </div>
-                <div class="card-body">
-                    <div class="table-responsive co-table-wrap">
-                        <table class="table table-sm table-bordered align-middle mb-0">
-                            <thead class="table-light">
-                                <tr class="text-nowrap">
-                                    <th style="width:46%">Section</th>
-                                    <th class="text-center" style="width:12%">Criteria</th>
-                                    <th class="text-center" style="width:12%">Compliant</th>
-                                    <th class="text-center" style="width:14%">Not Compliant</th>
-                                    <th class="text-center" style="width:16%">Com %</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr class="fw-semibold">
-                                    <td>OVERALL COMPLIANCE</td>
-                                    <td class="text-center">@overall?.Criteria</td>
-                                    <td class="text-center">@overall?.Comp</td>
-                                    <td class="text-center">@overall?.NonComp</td>
-                                    <td class="text-center">@PctFmt((double)(overall?.Pct ?? 0.0))</td>
-                                </tr>
-                                @if (rows != null)
-                                {
-                                    foreach (var r in rows)
-                                    {
-                                        <tr>
-                                            <td>@r.Section</td>
-                                            <td class="text-center">@r.Criteria</td>
-                                            <td class="text-center">@r.Comp</td>
-                                            <td class="text-center">@r.NonComp</td>
-                                            <td class="text-center">@PctFmt((double)r.Pct)</td>
-                                        </tr>
-                                    }
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="small text-muted mt-2">
-                        * Compliance % = Compliant ÷ (Compliant + Not Compliant). CI = 1 (N/A) is excluded from the denominator.
-                    </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-6 label-col">START DATE:</div>
+                    <div class="col-6"><input asp-for="StartDate" type="date" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-6 label-col">END DATE:</div>
+                    <div class="col-6"><input asp-for="EndDate" type="date" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-6 label-col">PROVINCE:</div>
+                    <div class="col-6"><input asp-for="Province" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center mb-2">
+                    <div class="col-6 label-col">SITE ASSESSMENT DATE:</div>
+                    <div class="col-6"><input asp-for="SiteAssessmentDate" type="date" class="form-control line-input" /></div>
+                </div>
+
+                <div class="row align-items-center">
+                    <div class="col-6 label-col">CONTACT NUMBER:</div>
+                    <div class="col-6"><input asp-for="SiteRepresentativeContactNumber" class="form-control line-input" /></div>
                 </div>
             </div>
-        </fieldset>
+        </div>
+    </div>
 
-        @* Footer buttons from TQA Nav *@
-        @{
-            ViewData["TqaNavMode"] = "footer";
-        }
-        @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
-    </form>
-</div>
+    <!-- Compliance Overview -->
+    <div class="border p-3 mt-4">
+        <h6 class="text-uppercase fw-bold mb-2">Compliance Overview</h6>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-nowrap">
+                        <th style="width:46%">SECTION</th>
+                        <th class="text-center" style="width:12%">Criteria</th>
+                        <th class="text-center" style="width:12%">Compliant</th>
+                        <th class="text-center" style="width:14%">Not Compliant</th>
+                        <th class="text-center" style="width:16%">Com %</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="fw-semibold">
+                        <td>OVERALL COMPLIANCE</td>
+                        <td class="text-center">@overall?.Criteria</td>
+                        <td class="text-center">@overall?.Comp</td>
+                        <td class="text-center">@overall?.NonComp</td>
+                        <td class="text-center">@PctFmt((double)(overall?.Pct ?? 0.0))</td>
+                    </tr>
+                    @if (rows != null)
+                    {
+                        foreach (var r in rows)
+                        {
+                            <tr>
+                                <td>@r.Section</td>
+                                <td class="text-center">@r.Criteria</td>
+                                <td class="text-center">@r.Comp</td>
+                                <td class="text-center">@r.NonComp</td>
+                                <td class="text-center">@PctFmt((double)r.Pct)</td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="small text-muted mt-2">
+            * Compliance % = Compliant ÷ (Compliant + Not Compliant). CI = 1 (N/A) is excluded from the denominator.
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end gap-2 mt-3">
+        <button name="nav" value="prev" class="btn btn-outline-secondary">Back</button>
+        <button name="nav" value="save" class="btn btn-secondary">Save Draft</button>
+        <button name="nav" value="next" class="btn btn-primary">Next</button>
+    </div>
+</form>
 
 @section Styles {
     <style>
-        .tiny-lbl {
-            letter-spacing: .02em;
+        .label-col {
+            font-size: .9rem;
+            text-transform: uppercase;
             font-weight: 600;
-            font-size: .72rem;
         }
 
-        .card-header {
-            letter-spacing: .02em;
+        .line-input {
+            border: none;
+            border-bottom: 2px dotted #6c757d;
+            border-radius: 0;
+            background: transparent;
         }
+
+            .line-input:focus {
+                box-shadow: none;
+                border-bottom-color: #198754;
+                background: transparent;
+            }
 
         .table td, .table th {
             vertical-align: middle;
         }
-
-        .co-table-wrap {
-            max-height: 40vh;
-            overflow: auto;
-            border: 1px solid #dee2e6;
-        }
-
-            .co-table-wrap thead th {
-                position: sticky;
-                top: 0;
-                z-index: 1;
-            }
     </style>
 }

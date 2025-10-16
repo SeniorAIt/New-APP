@@ -1,23 +1,10 @@
-﻿@model WorkbookManagement.Models.TqaData
+﻿@model TqaData
 @{
     ViewData["Title"] = "Training QA – Part 2: Site Readiness";
-
-    // The nav partial uses Id; keep it consistent
-    var id = (int)(ViewBag.Id ?? ViewBag.SubmissionId ?? 0);
-
-    // Read-only gating if you use it elsewhere
-    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
-
-    // Top nav/progress config (TQA has 8 steps; this is step 3)
-    ViewData["TqaActiveStep"] = 3;
-    ViewData["TqaTotalSteps"] = 8;
-
+    var id = (int)ViewBag.SubmissionId;
     var parts = Model.SiteReadiness.Parts.ToDictionary(p => p.PartCode, p => p.Title);
     var sec = Model.SiteReadiness;
 }
-
-@* Top step tabs + progress bar *@
-@await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
 
 <div class="container-xxl">
     <div class="d-flex align-items-center justify-content-between mb-2">
@@ -25,150 +12,141 @@
         <span class="text-muted small">Workbook 3</span>
     </div>
 
-    <form asp-action="Step3" asp-route-id="@id" method="post" id="siteReadinessForm" class="mb-4">
-        @Html.AntiForgeryToken()
+    <form asp-action="Step3" asp-route-id="@id" method="post" id="siteReadinessForm" class="mb-5 pb-5">
+        <input type="hidden" name="id" value="@id" />
 
-        <fieldset @(readOnly ? "disabled" : null)>
-            <!-- Header strip (mirrors Step 2; read-only) -->
-            <div class="row g-3 align-items-end mb-2">
-                <div class="col-md-5">
-                    <label class="form-label small mb-0 text-uppercase">Training Provider:</label>
-                    <input asp-for="SiteReadiness.TrainingProvider" class="form-control line-input" readonly />
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small mb-0 text-uppercase">Site:</label>
-                    <input asp-for="SiteReadiness.Site" class="form-control line-input" readonly />
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small mb-0 text-uppercase">Assessment Date:</label>
-                    <input asp-for="SiteReadiness.AssessmentDate" type="date" class="form-control line-input" readonly />
-                </div>
-                <div class="col-12">
-                    <div class="small text-muted">
-                        These values come from <strong>Part 1: General Information</strong> (Step 2). To change them, edit Step 2.
-                    </div>
-                </div>
+        <!-- Header strip -->
+        <div class="row g-3 align-items-end mb-2">
+            <div class="col-md-5">
+                <label class="form-label small mb-0 text-uppercase">Training Provider:</label>
+                <input asp-for="SiteReadiness.TrainingProvider" class="form-control line-input" />
             </div>
+            <div class="col-md-4">
+                <label class="form-label small mb-0 text-uppercase">Site:</label>
+                <input asp-for="SiteReadiness.Site" class="form-control line-input" />
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small mb-0 text-uppercase">Assessment Date:</label>
+                <input asp-for="SiteReadiness.AssessmentDate" type="date" class="form-control line-input" />
+            </div>
+        </div>
 
-            <!-- Summary boxes -->
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <div class="p-2 border">
-                        <div class="d-flex justify-content-between">
-                            <div><strong>CRITERIA:</strong> @sec.Criteria</div>
-                            <div class="small">
-                                <div>
-                                    Compliance:
-                                    <span id="compCount">@sec.Compliant</span>
-                                    &nbsp;<span id="compPct">@((sec.Criteria == 0 ? 0 : (int)Math.Round(sec.Percent * 100)))%</span>
-                                </div>
-                                <div>
-                                    Non-Compliance:
-                                    <span id="nonCompCount">@sec.NotCompliant</span>
-                                    &nbsp;<span id="nonCompPct">
-                                        @((sec.Criteria == 0
-                                                                                ? 0
-                                                                                : (int)Math.Round(
-                                                                                (sec.NotCompliant / (double)(sec.Compliant + sec.NotCompliant == 0
-                                                                                ? 1
-                                                                                : sec.Compliant + sec.NotCompliant)) * 100)))
-                                        %
-                                    </span>
-                                </div>
+        <!-- Summary boxes -->
+        <div class="row g-3">
+            <div class="col-md-6">
+                <div class="p-2 border">
+                    <div class="d-flex justify-content-between">
+                        <div><strong>CRITERIA:</strong> @sec.Criteria</div>
+                        <div class="small">
+                            <div>
+                                Compliance: <span id="compCount">@sec.Compliant</span> &nbsp;
+                                <span id="compPct">@((sec.Criteria == 0 ? 0 : (int)Math.Round(sec.Percent * 100)))%</span>
+                            </div>
+                            <div>
+                                Non-Compliance: <span id="nonCompCount">@sec.NotCompliant</span> &nbsp;
+                                <span id="nonCompPct">@((sec.Criteria == 0 ? 0 : (int)Math.Round((sec.NotCompliant / (double)(sec.Compliant + sec.NotCompliant == 0 ? 1 : sec.Compliant + sec.NotCompliant)) * 100)))%</span>
                             </div>
                         </div>
-                        <div class="small text-muted">
-                            Percentages update live based on CI selections (3=Compliant, 2=Not Compliant, 1=N/A not counted).
-                        </div>
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="p-2 border small">
-                        <div><span class="badge bg-success">3</span> Compliant</div>
-                        <div><span class="badge bg-danger">2</span> Not Compliant</div>
-                        <div><span class="badge bg-warning text-dark">1</span> Not Applicable</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="p-2 border small">
-                        CI = Compliance Indicator<br />
-                        CA = Corrective Action<br />
-                        CO = Close Out
-                    </div>
+                    <div class="small text-muted">Percentages update live based on CI selections (3=Compliant, 2=Not Compliant, 1=N/A not counted).</div>
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="p-2 border small">
+                    <div><span class="badge bg-success">3</span> Compliant</div>
+                    <div><span class="badge bg-danger">2</span> Not Compliant</div>
+                    <div><span class="badge bg-warning text-dark">1</span> Not Applicable</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="p-2 border small">
+                    CI = Compliance Indicator<br />
+                    CA = Corrective Action<br />
+                    CO = Close Out
+                </div>
+            </div>
+        </div>
 
-            <!-- Scrollable table -->
-            <div class="table-wrapper mt-3">
-                <table class="table table-sm table-bordered align-middle mb-0">
-                    <thead class="table-light">
-                        <tr class="text-nowrap">
-                            <th style="width:6%">AREA</th>
-                            <th style="width:22%"></th>
-                            <th style="width:40%">REQUIREMENT • EVIDENCE • ACTION</th>
-                            <th style="width:8%" class="text-center">CI</th>
-                            <th style="width:20%">CORRECTIVE ACTION / IMPROVEMENT</th>
-                            <th style="width:14%">CA ASSIGNED TO</th>
-                            <th style="width:12%">CO DATE</th>
-                            <th style="width:6%" class="text-center">CO</th>
-                            <th style="width:14%">VERIFIED BY</th>
+        <!-- Scrollable table -->
+        <div class="table-wrapper mt-3">
+            <table class="table table-sm table-bordered align-middle mb-0">
+                <thead class="table-light">
+                    <tr class="text-nowrap">
+                        <th style="width:6%">AREA</th>
+                        <th style="width:22%"></th>
+                        <th style="width:40%">REQUIREMENT • EVIDENCE • ACTION</th>
+                        <th style="width:8%" class="text-center">CI</th>
+                        <th style="width:20%">CORRECTIVE ACTION / IMPROVEMENT</th>
+                        <th style="width:14%">CA ASSIGNED TO</th>
+                        <th style="width:12%">CO DATE</th>
+                        <th style="width:6%" class="text-center">CO</th>
+                        <th style="width:14%">VERIFIED BY</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.SiteReadiness.Rows.Count; i++)
+                    {
+                        var r = Model.SiteReadiness.Rows[i];
+                        var area = parts.TryGetValue(r.PartCode, out var t) ? t : r.PartCode;
+                        <tr>
+                            <td class="text-nowrap">
+                                @r.PartCode
+                                <input type="hidden" asp-for="SiteReadiness.Rows[i].PartCode" />
+                            </td>
+                            <td class="text-nowrap">@area</td>
+                            <td class="reqreqmt-cell">
+                                <span class="req-code fw-semibold me-2">@r.Code</span>
+                                <span class="req-text">@r.Requirement</span>
+                                <input type="hidden" asp-for="SiteReadiness.Rows[i].Code" />
+                                <input type="hidden" asp-for="SiteReadiness.Rows[i].Requirement" />
+                            </td>
+                            <td class="text-center">
+                                <div class="d-inline-flex align-items-center">
+                                    <select asp-for="SiteReadiness.Rows[i].CI" class="form-select form-select-sm ci-select" style="min-width:70px;">
+                                        <option value=""></option>
+                                        <option value="3">3</option>
+                                        <option value="2">2</option>
+                                        <option value="1">1</option>
+                                    </select>
+                                    <i class="ci-icon ms-2" style="display:none; font-size:1.2rem;"></i>
+                                </div>
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].CorrectiveAction" />
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].AssignedTo" />
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm" type="date" asp-for="SiteReadiness.Rows[i].CODate" />
+                            </td>
+                            <td class="text-center">
+                                <input class="form-check-input" type="checkbox" asp-for="SiteReadiness.Rows[i].CO" />
+                            </td>
+                            <td>
+                                <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].VerifiedBy" />
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @for (int i = 0; i < Model.SiteReadiness.Rows.Count; i++)
-                        {
-                            var r = Model.SiteReadiness.Rows[i];
-                            var area = parts.TryGetValue(r.PartCode, out var t) ? t : r.PartCode;
-                            <tr>
-                                <td class="text-nowrap">
-                                    @r.PartCode
-                                    <input type="hidden" asp-for="SiteReadiness.Rows[i].PartCode" />
-                                </td>
-                                <td class="text-nowrap">@area</td>
-                                <td class="reqreqmt-cell">
-                                    <span class="req-code fw-semibold me-2">@r.Code</span>
-                                    <span class="req-text">@r.Requirement</span>
-                                    <input type="hidden" asp-for="SiteReadiness.Rows[i].Code" />
-                                    <input type="hidden" asp-for="SiteReadiness.Rows[i].Requirement" />
-                                </td>
-                                <td class="text-center">
-                                    <div class="d-inline-flex align-items-center">
-                                        <select asp-for="SiteReadiness.Rows[i].CI" class="form-select form-select-sm ci-select" style="min-width:70px;">
-                                            <option value=""></option>
-                                            <option value="3">3</option>
-                                            <option value="2">2</option>
-                                            <option value="1">1</option>
-                                        </select>
-                                        <i class="ci-icon ms-2" style="display:none; font-size:1.2rem;"></i>
-                                    </div>
-                                </td>
-                                <td>
-                                    <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].CorrectiveAction" />
-                                </td>
-                                <td>
-                                    <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].AssignedTo" />
-                                </td>
-                                <td>
-                                    <input class="form-control form-control-sm" type="date" asp-for="SiteReadiness.Rows[i].CODate" />
-                                </td>
-                                <td class="text-center">
-                                    <input class="form-check-input" type="checkbox" asp-for="SiteReadiness.Rows[i].CO" />
-                                </td>
-                                <td>
-                                    <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].VerifiedBy" />
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </fieldset>
+                    }
+                </tbody>
+            </table>
+        </div>
 
-        @* Footer buttons from TQA Nav (Prev / Save Draft / Next). *@
-        @{
-            ViewData["TqaNavMode"] = "footer";
-        }
-        @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+        <!-- Spacer so table content doesn't sit under fixed save bar -->
+        <div class="save-spacer"></div>
+
+        <!-- Fixed bottom Save/Prev/Next -->
+        <div class="save-bar fixed-bottom border-top bg-white">
+            <div class="container-xxl d-flex justify-content-between align-items-center py-2">
+                <div>
+                    <button type="submit" name="nav" value="prev" class="btn btn-outline-secondary btn-sm">← Previous</button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="submit" name="nav" value="save" class="btn btn-primary btn-sm">Save</button>
+                    <button type="submit" name="nav" value="next" class="btn btn-success btn-sm">Next →</button>
+                </div>
+            </div>
+        </div>
     </form>
 </div>
 
@@ -200,6 +178,16 @@
                 z-index: 2;
                 background: #f8f9fa;
             }
+
+        /* Save bar + spacer */
+        .save-bar {
+            box-shadow: 0 -4px 10px rgba(0,0,0,.05);
+            z-index: 1030;
+        }
+
+        .save-spacer {
+            height: 64px;
+        }
 
         /* Optional: strike-through for N/A */
         .line-through {
@@ -266,17 +254,17 @@
                     // CI = 1 (N/A) not counted
                 });
 
-                if (compCountEl) compCountEl.textContent = compliant;
-                if (nonCompCountEl) nonCompCountEl.textContent = nonCompliant;
+                compCountEl.textContent = compliant;
+                nonCompCountEl.textContent = nonCompliant;
 
                 if (applicable > 0) {
                     const compPct = (compliant / applicable) * 100;
                     const nonCompPct = (nonCompliant / applicable) * 100;
-                    if (compPctEl) compPctEl.textContent = fmtPct(compPct);
-                    if (nonCompPctEl) nonCompPctEl.textContent = fmtPct(nonCompPct);
+                    compPctEl.textContent = fmtPct(compPct);
+                    nonCompPctEl.textContent = fmtPct(nonCompPct);
                 } else {
-                    if (compPctEl) compPctEl.textContent = "0,0%";
-                    if (nonCompPctEl) nonCompPctEl.textContent = "0,0%";
+                    compPctEl.textContent = "0,0%";
+                    nonCompPctEl.textContent = "0,0%";
                 }
             }
 
@@ -296,3 +284,4 @@
         });
     </script>
 }
+

@@ -396,6 +396,9 @@ namespace WorkbookManagement.Models
     {
         public string? ProgrammeType { get; set; }
 
+        // NEW: mark a row as “completed” for snapshotting to Step9
+        public bool Completed { get; set; }
+
         public GenderBreakdown African { get; set; } = new();
         public GenderBreakdown Coloured { get; set; } = new();
         public GenderBreakdown Indian { get; set; } = new();
@@ -418,5 +421,4 @@ namespace WorkbookManagement.Models
 
         public int? VAR { get; set; } // Enrolments − (IP + SC + PR + DI)
     }
-
 }

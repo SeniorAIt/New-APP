@@ -15,10 +15,15 @@
         new("CEO","CEO")
     };
     var genderItems = new List<SelectListItem> { new("Male", "Male"), new("Female", "Female") };
+
+    // Ethnic with Asian/Other removed
     var ethnicItems = new List<SelectListItem> {
-        new("African","African"), new("Asian","Asian"), new("Coloured","Coloured"),
-        new("Indian","Indian"), new("White","White"), new("Other","Other")
+        new("African","African"),
+        new("Coloured","Coloured"),
+        new("Indian","Indian"),
+        new("White","White")
     };
+
     // For bools (select Yes/No). Values must be "true"/"false" for model binding.
     var yesNoItems = new List<SelectListItem> { new("Yes", "true"), new("No", "false") };
 
@@ -74,6 +79,10 @@
         width: 200px;
     }
 
+    .w-240 {
+        width: 240px;
+    }
+
     /* Make the selects/inputs consistent */
     .table-directors .form-control-sm,
     .table-directors .form-select-sm {
@@ -84,14 +93,14 @@
 <div class="container mt-3">
     <h3>PART 2: - BOARD OF DIRECTORS</h3>
 
-    <form method="post" novalidate>
-        @Html.AntiForgeryToken()
+    <form method="post">
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="box">
             <div class="d-flex align-items-center gap-3">
                 <div class="fw-bold">Total</div>
-                <input asp-for="TotalDirectors" type="number" min="0" class="form-control form-control-sm w-120" />
+                <!-- Readonly: auto-updated to count of director rows -->
+                <input asp-for="TotalDirectors" type="number" min="0" class="form-control form-control-sm w-120" readonly />
             </div>
         </div>
 
@@ -136,32 +145,73 @@
                                 <td><input asp-for="Directors[@i].SecondName" class="form-control form-control-sm" /></td>
 
                                 <td>
-                                    <select asp-for="Directors[@i].Title" asp-items="titleItems" class="form-select form-select-sm"></select>
+                                    <select asp-for="Directors[@i].Title" asp-items="titleItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
 
                                 <td><input asp-for="Directors[@i].Reference" class="form-control form-control-sm" /></td>
                                 <td><input asp-for="Directors[@i].Appointed" type="date" class="form-control form-control-sm" /></td>
 
                                 <td>
-                                    <select asp-for="Directors[@i].Designation" asp-items="designationItems" class="form-select form-select-sm"></select>
+                                    <select asp-for="Directors[@i].Designation" asp-items="designationItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
 
                                 <td>
-                                    <select asp-for="Directors[@i].Gender" asp-items="genderItems" class="form-select form-select-sm"></select>
+                                    <select asp-for="Directors[@i].Gender" asp-items="genderItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
 
                                 <td>
-                                    <select asp-for="Directors[@i].Ethnic" asp-items="ethnicItems" class="form-select form-select-sm"></select>
+                                    <select asp-for="Directors[@i].Ethnic" asp-items="ethnicItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
                                 </td>
 
-                                <td><select asp-for="Directors[@i].Disability" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
-                                <td><select asp-for="Directors[@i].GovSecInterest" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
-                                <td><select asp-for="Directors[@i].PrevEmployByGov" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
-                                <td><select asp-for="Directors[@i].ClearCreditScore" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
-                                <td><select asp-for="Directors[@i].ClearCriminalRecord" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
-                                <td><select asp-for="Directors[@i].ValidQualifications" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
-                                <td><select asp-for="Directors[@i].SuspensionFromCsd" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
-                                <td><select asp-for="Directors[@i].JudgementsIssuedByCourt" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <!-- Yes/No selects (bool binding) -->
+                                <td>
+                                    <select asp-for="Directors[@i].Disability" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select asp-for="Directors[@i].GovSecInterest" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select asp-for="Directors[@i].PrevEmployByGov" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select asp-for="Directors[@i].ClearCreditScore" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select asp-for="Directors[@i].ClearCriminalRecord" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select asp-for="Directors[@i].ValidQualifications" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select asp-for="Directors[@i].SuspensionFromCsd" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <select asp-for="Directors[@i].JudgementsIssuedByCourt" asp-items="yesNoItems" class="form-select form-select-sm">
+                                        <option value="" selected hidden>Select</option>
+                                    </select>
+                                </td>
 
                                 <td class="text-end">
                                     <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
@@ -175,18 +225,7 @@
 
         <div class="d-flex gap-2 justify-content-end mb-5">
             <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
-
-            <button class="btn btn-primary" name="nav" value="save" type="submit">Save</button>
-
-            @* Only show this when editing the Organisation Profile (no SubmissionId) *@
-            @if (ViewBag.CanSaveProfile == true)
-            {
-                <button class="btn btn-success" name="nav" value="save" type="submit"
-                        title="Save these details to your Organisation profile for future submissions">
-                    Save Organisation Profile
-                </button>
-            }
-
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
             <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
         </div>
     </form>
@@ -201,6 +240,7 @@
 
         <td>
             <select name="Directors[__idx__].Title" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
                 <option value="Mr">Mr</option>
                 <option value="Mrs">Mrs</option>
                 <option value="Ms">Ms</option>
@@ -215,6 +255,7 @@
 
         <td>
             <select name="Directors[__idx__].Designation" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
                 <option value="Chairperson">Chairperson</option>
                 <option value="Vice-Chairperson">Vice-Chairperson</option>
                 <option value="Secretary">Secretary</option>
@@ -227,6 +268,7 @@
 
         <td>
             <select name="Directors[__idx__].Gender" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
             </select>
@@ -234,24 +276,71 @@
 
         <td>
             <select name="Directors[__idx__].Ethnic" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
                 <option value="African">African</option>
-                <option value="Asian">Asian</option>
                 <option value="Coloured">Coloured</option>
                 <option value="Indian">Indian</option>
                 <option value="White">White</option>
-                <option value="Other">Other</option>
             </select>
         </td>
 
-        <!-- Yes/No selects bind to bool when values are "true" / "false" -->
-        <td><select name="Directors[__idx__].Disability" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
-        <td><select name="Directors[__idx__].GovSecInterest" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
-        <td><select name="Directors[__idx__].PrevEmployByGov" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
-        <td><select name="Directors[__idx__].ClearCreditScore" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
-        <td><select name="Directors[__idx__].ClearCriminalRecord" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
-        <td><select name="Directors[__idx__].ValidQualifications" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
-        <td><select name="Directors[__idx__].SuspensionFromCsd" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
-        <td><select name="Directors[__idx__].JudgementsIssuedByCourt" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <!-- Yes/No selects (bool binding) -->
+        <td>
+            <select name="Directors[__idx__].Disability" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td>
+            <select name="Directors[__idx__].GovSecInterest" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td>
+            <select name="Directors[__idx__].PrevEmployByGov" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td>
+            <select name="Directors[__idx__].ClearCreditScore" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td>
+            <select name="Directors[__idx__].ClearCriminalRecord" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td>
+            <select name="Directors[__idx__].ValidQualifications" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td>
+            <select name="Directors[__idx__].SuspensionFromCsd" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td>
+            <select name="Directors[__idx__].JudgementsIssuedByCourt" class="form-select form-select-sm">
+                <option value="" selected hidden>Select</option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
 
         <td class="text-end">
             <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
@@ -262,25 +351,38 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
     <script>
-        (function(){
-          const tableBody = document.querySelector('#directorsTable tbody');
-          const tpl = document.querySelector('#row-template').innerHTML;
-          const addBtn = document.getElementById('addRowBtn');
+        (function () {
+            const tableBody = document.querySelector('#directorsTable tbody');
+            const tpl = document.querySelector('#row-template').innerHTML;
+            const addBtn = document.getElementById('addRowBtn');
+            const totalInput = document.querySelector('[name="TotalDirectors"]');
 
-          let nextIndex = @(Model.Directors?.Count ?? 0);
+            // Emit a plain number to avoid TypeScript/JS parse warnings
+            let nextIndex = @((Model.Directors?.Count ?? 0));
 
-          addBtn?.addEventListener('click', () => {
-            const html = tpl.replaceAll('__idx__', String(nextIndex++));
-            const temp = document.createElement('tbody');
-            temp.innerHTML = html.trim();
-            tableBody.appendChild(temp.firstElementChild);
-          });
-
-          document.addEventListener('click', function(e){
-            if (e.target && e.target.classList.contains('remove-row')) {
-              e.target.closest('tr')?.remove();
+            function updateTotal() {
+                // Count TRs in tbody as the source of truth
+                const count = tableBody.querySelectorAll('tr').length;
+                if (totalInput) totalInput.value = String(count);
             }
-          });
+
+            // Initialize total on load (covers pre-rendered rows)
+            updateTotal();
+
+            addBtn.addEventListener('click', () => {
+                const html = tpl.replaceAll('__idx__', String(nextIndex++));
+                const temp = document.createElement('tbody');
+                temp.innerHTML = html.trim();
+                tableBody.appendChild(temp.firstElementChild);
+                updateTotal();
+            });
+
+            document.addEventListener('click', function (e) {
+                if (e.target && e.target.classList.contains('remove-row')) {
+                    e.target.closest('tr')?.remove();
+                    updateTotal();
+                }
+            });
         })();
     </script>
 }

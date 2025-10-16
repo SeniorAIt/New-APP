@@ -111,9 +111,6 @@ namespace WorkbookManagement.Controllers
                 _ => RedirectToAction(nameof(Step2), new { id })
             };
         }
-        // =======================================================
-        // STEP 2 — General Information
-        // =======================================================
 
         [HttpGet]
         public async Task<IActionResult> Step2(int id)
@@ -191,12 +188,10 @@ namespace WorkbookManagement.Controllers
         [HttpGet]
         public async Task<IActionResult> Step3(int id)
         {
-            var wb = await LoadScopedAsync(id, track: true);
+            var wb = await LoadScopedAsync(id);
             if (wb is null) return NotFound();
 
             var data = ParseData(wb);
-
-            // Seed the grid the first time
             bool seeded = EnsureSiteSeed(data.SiteReadiness);
             if (seeded)
             {
@@ -205,19 +200,9 @@ namespace WorkbookManagement.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // Always mirror header values from Step 2 (General)
-            var (prov, site, assess) = await GetTqaHeaderAsync(id);
-            data.SiteReadiness.TrainingProvider = prov ?? string.Empty;
-            data.SiteReadiness.Site = site ?? string.Empty;
-            data.SiteReadiness.AssessmentDate = assess;
-
-            // For nav/partials
-            ViewBag.Id = id;
-
-            // View is strongly-typed to TqaData (we pass the whole data object)
-            return View("Step3", data);
+            ViewBag.SubmissionId = wb.Id;
+            return View("Step3", data); // /Views/TrainingQualityAssurance/Step3.cshtml (typed to TqaData)
         }
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step3(int id, [Bind(Prefix = "SiteReadiness")] TqaSiteReadiness site, string? nav = "save")
@@ -303,7 +288,7 @@ namespace WorkbookManagement.Controllers
         }
 
         // =======================================================
-        // STEP 4 — PART 2: EQUIPMENT REGISTER (grid) — GET
+        // STEP 4 — PART 2: EQUIPMENT REGISTER (grid)
         // =======================================================
         [HttpGet]
         public async Task<IActionResult> Step4(int id)
@@ -312,35 +297,17 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
 
             var data = ParseData(wb);
-
-            // Seed the equipment table the first time this step is opened
             bool seeded = EnsureEquipmentSeed(data.Equipment);
             if (seeded)
             {
-                wb.Data = System.Text.Json.JsonSerializer.Serialize(data, JsonOpts);
+                wb.Data = JsonSerializer.Serialize(data, JsonOpts);
                 wb.UpdatedAt = DateTime.UtcNow;
                 await _db.SaveChangesAsync();
             }
 
-            // Prefill header from Step 2 (General Information)
-            var (prov, _site, _assess) = await GetTqaHeaderAsync(id); // site/assess not shown on Step 4 UI
-            if (string.IsNullOrWhiteSpace(data.Equipment.TrainingProvider))
-                data.Equipment.TrainingProvider = prov;
-
-            // Pull through course title + learner count if empty here
-            var g = data.General;
-            if (string.IsNullOrWhiteSpace(data.Equipment.QualificationTitle) && !string.IsNullOrWhiteSpace(g?.QualificationCourseTitle))
-                data.Equipment.QualificationTitle = g!.QualificationCourseTitle;
-
-            if ((data.Equipment.NumberOfLearners == 0) && g?.NumberOfLearners is int n && n > 0)
-                data.Equipment.NumberOfLearners = n;
-
-            // For nav/partials
             ViewBag.Id = id;
-
             return View(data.Equipment); // /Views/TrainingQualityAssurance/Step4.cshtml
         }
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step4(int id, TqaEquipment model, string? nav = "next")
@@ -377,7 +344,6 @@ namespace WorkbookManagement.Controllers
             return true;
         }
 
-
         // =======================================================
         // STEP 5 — PART 3: FACILITATOR READINESS (grid)
         // =======================================================
@@ -388,8 +354,6 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
 
             var data = ParseData(wb);
-
-            // Seed the grid the first time
             bool seeded = EnsureFacilitatorSeed(data.Facilitator);
             if (seeded)
             {
@@ -398,17 +362,9 @@ namespace WorkbookManagement.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // Always mirror header values from Step 2 (General)
-            var (prov, site, assess) = await GetTqaHeaderAsync(id);
-            data.Facilitator.TrainingProvider = prov ?? string.Empty;
-            data.Facilitator.Site = site ?? string.Empty;
-            data.Facilitator.AssessmentDate = assess;
-
             ViewBag.Id = id;
             return View(data.Facilitator); // /Views/TrainingQualityAssurance/Step5.cshtml
         }
-
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step5(int id, TqaFacilitator model, string? nav = "next")
@@ -488,9 +444,6 @@ namespace WorkbookManagement.Controllers
         // =======================================================
         // STEP 6 — PART 4: LEARNER PREPAREDNESS (grid)
         // =======================================================
-        // =======================================================
-        // STEP 6 — PART 4: LEARNER PREPAREDNESS (grid)
-        // =======================================================
         [HttpGet]
         public async Task<IActionResult> Step6(int id)
         {
@@ -498,8 +451,6 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
 
             var data = ParseData(wb);
-
-            // Seed the grid the first time
             bool seeded = EnsureLearnerSeed(data.Learner);
             if (seeded)
             {
@@ -508,17 +459,9 @@ namespace WorkbookManagement.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // Always mirror header values from Step 2 (General)
-            var (prov, site, assess) = await GetTqaHeaderAsync(id);
-            data.Learner.TrainingProvider = prov ?? string.Empty;
-            data.Learner.Site = site ?? string.Empty;
-            data.Learner.AssessmentDate = assess;
-
             ViewBag.Id = id;
             return View(data.Learner); // /Views/TrainingQualityAssurance/Step6.cshtml
         }
-
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step6(int id, TqaLearner model, string? nav = "next")
@@ -589,9 +532,6 @@ namespace WorkbookManagement.Controllers
         // =======================================================
         // STEP 7 — PART 5: ADMINISTRATION & SUPPORT (grid)
         // =======================================================
-        // =======================================================
-        // STEP 7 — PART 5: ADMINISTRATION & SUPPORT (grid)
-        // =======================================================
         [HttpGet]
         public async Task<IActionResult> Step7(int id)
         {
@@ -599,8 +539,6 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
 
             var data = ParseData(wb);
-
-            // Seed grid first time only
             bool seeded = EnsureAdminSupportSeed(data.AdminSupport);
             if (seeded)
             {
@@ -609,19 +547,9 @@ namespace WorkbookManagement.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // Prefill header from Step 2 (General Information)
-            var (prov, site, assess) = await GetTqaHeaderAsync(id);
-            if (string.IsNullOrWhiteSpace(data.AdminSupport.TrainingProvider))
-                data.AdminSupport.TrainingProvider = prov;
-            if (string.IsNullOrWhiteSpace(data.AdminSupport.Site))
-                data.AdminSupport.Site = site;
-            data.AdminSupport.AssessmentDate ??= assess;
-
             ViewBag.Id = id;
             return View(data.AdminSupport); // /Views/TrainingQualityAssurance/Step7.cshtml
         }
-
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step7(int id, TqaAdminSupport model, string? nav = "next")
@@ -718,8 +646,6 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
 
             var data = ParseData(wb);
-
-            // Seed the risk grid the first time this step is opened
             bool seeded = EnsureRiskSeed(data.Risk);
             if (seeded)
             {
@@ -728,21 +654,9 @@ namespace WorkbookManagement.Controllers
                 await _db.SaveChangesAsync();
             }
 
-            // Prefill header from Step 2 (General Information)
-            var (prov, site, assess) = await GetTqaHeaderAsync(id);
-            if (string.IsNullOrWhiteSpace(data.Risk.TrainingProvider))
-                data.Risk.TrainingProvider = prov;
-            if (string.IsNullOrWhiteSpace(data.Risk.Site))
-                data.Risk.Site = site;
-            data.Risk.AssessmentDate ??= assess;
-
-            // For nav/partials
             ViewBag.Id = id;
-
             return View(data.Risk); // /Views/TrainingQualityAssurance/Step8.cshtml
         }
-
-
 
         [HttpPost, ValidateAntiForgeryToken]
         public async Task<IActionResult> Step8(int id, TqaRisk model, string? nav = "save")
@@ -848,24 +762,5 @@ namespace WorkbookManagement.Controllers
                 return TqaData.CreateDefault();
             }
         }
-        // Pull "header" values for steps 3–8 from Step 2 (General Information)
-        private async Task<(string Provider, string Site, DateTime? AssessDate)> GetTqaHeaderAsync(int submissionId)
-        {
-            var wb = await LoadScopedAsync(submissionId, track: false);
-            if (wb is null)
-                return (string.Empty, string.Empty, null);
-
-            var data = ParseData(wb);
-
-            // If your TqaData property name differs, adjust "General" accordingly.
-            var g = data.General;
-
-            var provider = g?.TrainingProvider ?? string.Empty;
-            var site = g?.SiteNameLocation ?? string.Empty;
-            var assessDate = g?.SiteAssessmentDate;
-
-            return (provider, site, assessDate);
-        }
-
     }
 }

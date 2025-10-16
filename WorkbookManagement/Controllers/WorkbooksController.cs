@@ -5,7 +5,6 @@ using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 using WorkbookManagement.Data;
 using WorkbookManagement.Models;
-using WorkbookManagement.Areas.Identity.Data; // ApplicationUser
 
 namespace WorkbookManagement.Controllers
 {
@@ -21,6 +20,7 @@ namespace WorkbookManagement.Controllers
             _users = users;
         }
 
+        // GET: /Workbooks
         // GET: /Workbooks
         public async Task<IActionResult> Index(
             string? q,                  // free text: title, user email, company name
@@ -165,28 +165,12 @@ namespace WorkbookManagement.Controllers
             if (wb is null) return NotFound();
             if (!isSuper && me.CompanyId != wb.CompanyId) return Forbid();
 
-            // Load parent submission to decide if editing is allowed
-            var bundle = await _db.Submissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == wb.SubmissionId);
-
-            bool isLocked = bundle != null &&
-                            (bundle.Status == SubmissionBundleStatus.Submitted ||
-                             bundle.Status == SubmissionBundleStatus.Approved);
-
-            if (isLocked)
-            {
-                TempData["warn"] = bundle!.Status == SubmissionBundleStatus.Submitted
-                    ? "This submission is awaiting review. You can view the wizard, but editing is disabled."
-                    : "This submission has been approved. You can view the wizard, but editing is disabled.";
-            }
-
-            // Route to the wizard entry point for each workbook type, passing readOnly flag
+            // Route to the *wizard entry point* for each workbook type
             return wb.WorkbookType switch
             {
-                WorkbookType.Workbook1 => RedirectToAction("Step1", "OrgInfo", new { id = wb.Id, readOnly = isLocked }),
-                WorkbookType.Workbook2 => RedirectToAction("Step1", "QualityAssurance", new { id = wb.Id, readOnly = isLocked }),
-                WorkbookType.Workbook3 => RedirectToAction("Step1", "TrainingQualityAssurance", new { id = wb.Id, readOnly = isLocked }),
+                WorkbookType.Workbook1 => RedirectToAction("Step1", "OrgInfo", new { id = wb.Id }),
+                WorkbookType.Workbook2 => RedirectToAction("Step1", "QualityAssurance", new { id = wb.Id }),
+                WorkbookType.Workbook3 => RedirectToAction("Step1", "TrainingQualityAssurance", new { id = wb.Id }),
                 _ => RedirectToAction(nameof(Edit), new { id = wb.Id })  // fallback
             };
         }
@@ -303,25 +287,10 @@ namespace WorkbookManagement.Controllers
                 if (me.CompanyId is null || wb.CompanyId != me.CompanyId) return Forbid();
             }
 
-            // Defense-in-depth: if parent is Submitted/Approved, show wizard in read-only instead of generic Show
-            var bundle = await _db.Submissions
-                .AsNoTracking()
-                .FirstOrDefaultAsync(s => s.Id == wb.SubmissionId);
-
-            if (bundle != null && (bundle.Status == SubmissionBundleStatus.Submitted || bundle.Status == SubmissionBundleStatus.Approved))
-            {
-                TempData["warn"] = bundle.Status == SubmissionBundleStatus.Submitted
-                    ? "This submission is awaiting review. You can view the wizard, but editing is disabled."
-                    : "This submission has been approved. You can view the wizard, but editing is disabled.";
-
-                return RedirectToAction(nameof(Open), new { id = wb.Id });
-            }
-
             return View(wb);
         }
 
         // POST: /Workbooks/Edit/5
-        // NOTE: This method name was already "Create" in your file. Keeping it as-is to avoid route changes.
         [HttpPost]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(
