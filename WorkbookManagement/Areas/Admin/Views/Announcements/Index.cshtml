@@ -1,0 +1,57 @@
+﻿@model IEnumerable<WorkbookManagement.Models.Announcement>
+@{
+    ViewData["Title"] = "Announcements";
+    var companies = (IEnumerable<WorkbookManagement.Models.Company>)ViewBag.Companies;
+    Guid? filterCompanyId = ViewBag.FilterCompanyId as Guid?;
+}
+<h2 class="mb-3">Announcements</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <form method="get" class="d-flex gap-2">
+        <select name="companyId" class="form-select form-select-sm" style="min-width:260px" onchange="this.form.submit()">
+            <option value="">All companies</option>
+            @foreach (var c in companies)
+            {
+                <option value="@c.Id" selected="@(filterCompanyId == c.Id ? "selected" : null)">@c.Name</option>
+            }
+        </select>
+        <noscript><button class="btn btn-sm btn-outline-primary" type="submit">Filter</button></noscript>
+    </form>
+    <a class="btn btn-primary" asp-action="Create">New Announcement</a>
+</div>
+
+<div class="list-group shadow-sm">
+    @foreach (var a in Model)
+    {
+        <div class="list-group-item">
+            <div class="d-flex justify-content-between">
+                <div>
+                    <div class="fw-semibold">@a.Title</div>
+                    <div class="small text-muted">
+                        @a.CreatedAtUtc.ToLocalTime():g
+                        @if (a.ExpiresAtUtc.HasValue)
+                        {
+                            <span> • Expires: @a.ExpiresAtUtc.Value.ToLocalTime():g</span>
+                        }
+                        @if (a.CompanyId.HasValue)
+                        {
+                            <span class="badge bg-secondary ms-2">Company-specific</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-info ms-2">Global</span>
+                        }
+                    </div>
+                    <div class="mt-2">@a.Body</div>
+                </div>
+                <div class="text-end">
+                    <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@a.Id">Edit</a>
+                    <form asp-action="Delete" asp-route-id="@a.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this announcement?');">
+                        @Html.AntiForgeryToken()
+                        <button class="btn btn-sm btn-outline-danger">Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
+</div>

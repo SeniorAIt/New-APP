@@ -1,0 +1,122 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - APPETD</title>
+
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/WorkbookManagement.styles.css" asp-append-version="true" />
+
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <header>
+        <!-- Brand gradient + dark navbar text from site.css -->
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-dark appetd border-bottom shadow-sm">
+            <div class="container-fluid">
+                <a class="navbar-brand d-flex align-items-center" asp-area="" asp-controller="Home" asp-action="Index">
+                    <img src="~/images/Final-Logo-v3.png"
+                         alt="APPETD"
+                         style="height:28px;width:auto;"
+                         asp-append-version="true" />
+                    <span class="ms-2 fw-semibold">Gold Standard</span>
+                </a>
+
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse"
+                        aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                    @{
+                        // null-safe helpers
+                        var isAuthenticated = (User?.Identity?.IsAuthenticated ?? false);
+                        var isSuperAdmin = (User?.IsInRole("SuperAdmin") ?? false);
+                        var isCompanyUser = (User?.IsInRole("CompanyUser") ?? false);
+                        var isCompanyAdmin = (User?.IsInRole("CompanyAdmin") ?? false); // if you use this role
+                        var showCompanyMenus = isAuthenticated && !isSuperAdmin && (isCompanyUser || isCompanyAdmin);
+                    }
+
+                    <!-- left side links -->
+                    <ul class="navbar-nav flex-grow-1">
+                        <li class="nav-item">
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                        </li>
+
+                        @* SuperAdmin-only items *@
+                        @if (isSuperAdmin)
+                        {
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Admin</a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" asp-area="Admin" asp-controller="Companies" asp-action="Index">Companies</a></li>
+                                    <li><a class="dropdown-item" asp-area="Admin" asp-controller="Users" asp-action="Index">Users</a></li>
+                                    <li><a class="dropdown-item" asp-area="Admin" asp-controller="Announcements" asp-action="Index">Announcements</a></li>
+                                    <li><a class="dropdown-item" asp-area="Admin" asp-controller="Calendar" asp-action="Index">Calendar</a></li>
+                                </ul>
+                            </li>
+
+                            @* Top-level link to the Review Queue *@
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="Admin" asp-controller="Reviews" asp-action="Index">
+                                    Review Queue
+                                </a>
+                            </li>
+
+                            @* NEW: SuperAdmin should also be able to view Documents (root area) *@
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Documents" asp-action="Index">
+                                    Documents
+                                </a>
+                            </li>
+                        }
+
+                        @* Company-side menus: visible to CompanyAdmin/CompanyUser, hidden from SuperAdmin *@
+                        @if (showCompanyMenus)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Workbooks" asp-action="Index">Workbooks</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Submissions" asp-action="Index">Submissions</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Documents" asp-action="Index">Documents</a>
+                            </li>
+                        }
+                    </ul>
+
+                    <!-- right side auth area -->
+                    <ul class="navbar-nav ms-auto">
+                        <partial name="_LoginPartial" />
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Main content grows to fill available space so footer sits at bottom -->
+    <div class="container flex-grow-1 my-3">
+        <main role="main" class="pb-3">
+            <!-- Global alerts -->
+            <partial name="_Alerts" />
+            @RenderBody()
+        </main>
+    </div>
+
+    <!-- Sticky-to-bottom site footer (always shown) -->
+    <footer class="border-top small text-muted mt-auto">
+        <div class="container py-2">
+            &copy; @DateTime.UtcNow.Year - APPETD Workbook Management -
+            <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+        </div>
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

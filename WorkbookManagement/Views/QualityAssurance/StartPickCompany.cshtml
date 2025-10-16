@@ -1,0 +1,23 @@
+﻿@{
+    ViewData["Title"] = "Pick Company";
+    var companies = (IEnumerable<WorkbookManagement.Models.Company>)ViewBag.Companies!;
+}
+<div class="container mt-3">
+    <h3>Start Quality Assurance Workbook</h3>
+    <p class="text-muted">Select a company to create the workbook for.</p>
+    <form method="get" asp-action="Start" asp-controller="QualityAssurance">
+        <div class="row g-2">
+            <div class="col-md-6">
+                <select name="companyId" class="form-select">
+                    @foreach (var c in companies)
+                    {
+                        <option value="@c.Id">@c.Name</option>
+                    }
+                </select>
+            </div>
+            <div class="col-md-6">
+                <button class="btn btn-primary">Create Workbook</button>
+            </div>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,298 @@
+﻿@model WorkbookManagement.Models.TqaData
+@{
+    ViewData["Title"] = "Training QA – Part 2: Site Readiness";
+
+    // The nav partial uses Id; keep it consistent
+    var id = (int)(ViewBag.Id ?? ViewBag.SubmissionId ?? 0);
+
+    // Read-only gating if you use it elsewhere
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+
+    // Top nav/progress config (TQA has 8 steps; this is step 3)
+    ViewData["TqaActiveStep"] = 3;
+    ViewData["TqaTotalSteps"] = 8;
+
+    var parts = Model.SiteReadiness.Parts.ToDictionary(p => p.PartCode, p => p.Title);
+    var sec = Model.SiteReadiness;
+}
+
+@* Top step tabs + progress bar *@
+@await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+
+<div class="container-xxl">
+    <div class="d-flex align-items-center justify-content-between mb-2">
+        <h2 class="h6 text-uppercase fw-bold mb-0">Part 2: Site Readiness</h2>
+        <span class="text-muted small">Workbook 3</span>
+    </div>
+
+    <form asp-action="Step3" asp-route-id="@id" method="post" id="siteReadinessForm" class="mb-4">
+        @Html.AntiForgeryToken()
+
+        <fieldset @(readOnly ? "disabled" : null)>
+            <!-- Header strip (mirrors Step 2; read-only) -->
+            <div class="row g-3 align-items-end mb-2">
+                <div class="col-md-5">
+                    <label class="form-label small mb-0 text-uppercase">Training Provider:</label>
+                    <input asp-for="SiteReadiness.TrainingProvider" class="form-control line-input" readonly />
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small mb-0 text-uppercase">Site:</label>
+                    <input asp-for="SiteReadiness.Site" class="form-control line-input" readonly />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-0 text-uppercase">Assessment Date:</label>
+                    <input asp-for="SiteReadiness.AssessmentDate" type="date" class="form-control line-input" readonly />
+                </div>
+                <div class="col-12">
+                    <div class="small text-muted">
+                        These values come from <strong>Part 1: General Information</strong> (Step 2). To change them, edit Step 2.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Summary boxes -->
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <div class="p-2 border">
+                        <div class="d-flex justify-content-between">
+                            <div><strong>CRITERIA:</strong> @sec.Criteria</div>
+                            <div class="small">
+                                <div>
+                                    Compliance:
+                                    <span id="compCount">@sec.Compliant</span>
+                                    &nbsp;<span id="compPct">@((sec.Criteria == 0 ? 0 : (int)Math.Round(sec.Percent * 100)))%</span>
+                                </div>
+                                <div>
+                                    Non-Compliance:
+                                    <span id="nonCompCount">@sec.NotCompliant</span>
+                                    &nbsp;<span id="nonCompPct">
+                                        @((sec.Criteria == 0
+                                                                                ? 0
+                                                                                : (int)Math.Round(
+                                                                                (sec.NotCompliant / (double)(sec.Compliant + sec.NotCompliant == 0
+                                                                                ? 1
+                                                                                : sec.Compliant + sec.NotCompliant)) * 100)))
+                                        %
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="small text-muted">
+                            Percentages update live based on CI selections (3=Compliant, 2=Not Compliant, 1=N/A not counted).
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-2 border small">
+                        <div><span class="badge bg-success">3</span> Compliant</div>
+                        <div><span class="badge bg-danger">2</span> Not Compliant</div>
+                        <div><span class="badge bg-warning text-dark">1</span> Not Applicable</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="p-2 border small">
+                        CI = Compliance Indicator<br />
+                        CA = Corrective Action<br />
+                        CO = Close Out
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable table -->
+            <div class="table-wrapper mt-3">
+                <table class="table table-sm table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr class="text-nowrap">
+                            <th style="width:6%">AREA</th>
+                            <th style="width:22%"></th>
+                            <th style="width:40%">REQUIREMENT • EVIDENCE • ACTION</th>
+                            <th style="width:8%" class="text-center">CI</th>
+                            <th style="width:20%">CORRECTIVE ACTION / IMPROVEMENT</th>
+                            <th style="width:14%">CA ASSIGNED TO</th>
+                            <th style="width:12%">CO DATE</th>
+                            <th style="width:6%" class="text-center">CO</th>
+                            <th style="width:14%">VERIFIED BY</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < Model.SiteReadiness.Rows.Count; i++)
+                        {
+                            var r = Model.SiteReadiness.Rows[i];
+                            var area = parts.TryGetValue(r.PartCode, out var t) ? t : r.PartCode;
+                            <tr>
+                                <td class="text-nowrap">
+                                    @r.PartCode
+                                    <input type="hidden" asp-for="SiteReadiness.Rows[i].PartCode" />
+                                </td>
+                                <td class="text-nowrap">@area</td>
+                                <td class="reqreqmt-cell">
+                                    <span class="req-code fw-semibold me-2">@r.Code</span>
+                                    <span class="req-text">@r.Requirement</span>
+                                    <input type="hidden" asp-for="SiteReadiness.Rows[i].Code" />
+                                    <input type="hidden" asp-for="SiteReadiness.Rows[i].Requirement" />
+                                </td>
+                                <td class="text-center">
+                                    <div class="d-inline-flex align-items-center">
+                                        <select asp-for="SiteReadiness.Rows[i].CI" class="form-select form-select-sm ci-select" style="min-width:70px;">
+                                            <option value=""></option>
+                                            <option value="3">3</option>
+                                            <option value="2">2</option>
+                                            <option value="1">1</option>
+                                        </select>
+                                        <i class="ci-icon ms-2" style="display:none; font-size:1.2rem;"></i>
+                                    </div>
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].CorrectiveAction" />
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].AssignedTo" />
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm" type="date" asp-for="SiteReadiness.Rows[i].CODate" />
+                                </td>
+                                <td class="text-center">
+                                    <input class="form-check-input" type="checkbox" asp-for="SiteReadiness.Rows[i].CO" />
+                                </td>
+                                <td>
+                                    <input class="form-control form-control-sm line-input" asp-for="SiteReadiness.Rows[i].VerifiedBy" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </fieldset>
+
+        @* Footer buttons from TQA Nav (Prev / Save Draft / Next). *@
+        @{
+            ViewData["TqaNavMode"] = "footer";
+        }
+        @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+    </form>
+</div>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        /* Line-input look */
+        .line-input {
+            border: none;
+            border-bottom: 1px dotted #adb5bd !important;
+            border-radius: 0;
+            padding-left: .25rem;
+            padding-right: .25rem;
+            background-color: transparent;
+        }
+
+        /* Scrollable table with sticky header */
+        .table-wrapper {
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #dee2e6;
+            background: #fff;
+        }
+
+            .table-wrapper thead th {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                background: #f8f9fa;
+            }
+
+        /* Optional: strike-through for N/A */
+        .line-through {
+            text-decoration: line-through;
+            text-decoration-thickness: 2px;
+            text-decoration-color: #d39e00;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const compCountEl    = document.getElementById("compCount");
+            const compPctEl      = document.getElementById("compPct");
+            const nonCompCountEl = document.getElementById("nonCompCount");
+            const nonCompPctEl   = document.getElementById("nonCompPct");
+
+            function fmtPct(n) {
+                // one decimal, comma as decimal separator
+                return (Math.round(n * 10) / 10).toFixed(1).replace(".", ",") + "%";
+            }
+
+            function updateRowVisuals(select) {
+                const row = select.closest("tr");
+                const icon = row.querySelector(".ci-icon");
+                const combinedCell = row.querySelector(".reqreqmt-cell");
+
+                // Reset visuals
+                icon.className = "ci-icon ms-2";
+                icon.style.display = "inline";
+                combinedCell.style.color = "";
+                combinedCell.classList.remove("line-through");
+
+                switch (select.value) {
+                    case "3": // green ✔
+                        icon.classList.add("bi", "bi-check-circle-fill", "text-success");
+                        combinedCell.style.color = "green";
+                        break;
+                    case "2": // red ❌
+                        icon.classList.add("bi", "bi-x-circle-fill", "text-danger");
+                        combinedCell.style.color = "red";
+                        break;
+                    case "1": // yellow ⚠ + strike through
+                        icon.classList.add("bi", "bi-exclamation-circle-fill", "text-warning");
+                        combinedCell.style.color = "goldenrod";
+                        combinedCell.classList.add("line-through");
+                        break;
+                    default:
+                        icon.style.display = "none";
+                        break;
+                }
+            }
+
+            function recalcSummary() {
+                const selects = Array.from(document.querySelectorAll(".ci-select"));
+                let compliant = 0;      // CI = 3
+                let nonCompliant = 0;   // CI = 2
+                let applicable = 0;     // CI in {2,3}
+
+                selects.forEach(s => {
+                    if (s.value === "3") { compliant++; applicable++; }
+                    else if (s.value === "2") { nonCompliant++; applicable++; }
+                    // CI = 1 (N/A) not counted
+                });
+
+                if (compCountEl) compCountEl.textContent = compliant;
+                if (nonCompCountEl) nonCompCountEl.textContent = nonCompliant;
+
+                if (applicable > 0) {
+                    const compPct = (compliant / applicable) * 100;
+                    const nonCompPct = (nonCompliant / applicable) * 100;
+                    if (compPctEl) compPctEl.textContent = fmtPct(compPct);
+                    if (nonCompPctEl) nonCompPctEl.textContent = fmtPct(nonCompPct);
+                } else {
+                    if (compPctEl) compPctEl.textContent = "0,0%";
+                    if (nonCompPctEl) nonCompPctEl.textContent = "0,0%";
+                }
+            }
+
+            // Initialize rows + summary on load
+            document.querySelectorAll(".ci-select").forEach(function (select) {
+                updateRowVisuals(select);
+            });
+            recalcSummary();
+
+            // Bind change events
+            document.querySelectorAll(".ci-select").forEach(function (select) {
+                select.addEventListener("change", function () {
+                    updateRowVisuals(select);
+                    recalcSummary();
+                });
+            });
+        });
+    </script>
+}

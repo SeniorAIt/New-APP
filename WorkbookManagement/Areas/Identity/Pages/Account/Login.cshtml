@@ -1,0 +1,98 @@
+﻿@page
+@model LoginModel
+@{
+    Layout = "/Views/Shared/_Layout.cshtml";
+    ViewData["Title"] = "Log in";
+
+    // ---- Null-safe locals to avoid CS8602 warnings ----
+    var externalLogins = Model?.ExternalLogins ?? new List<Microsoft.AspNetCore.Authentication.AuthenticationScheme>();
+    var returnUrl = Model?.ReturnUrl ?? Url.Content("~/");
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-11 col-sm-9 col-md-7 col-lg-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4 p-md-5">
+
+                    <div class="text-center mb-4">
+                        <img src="~/Images/Final-Logo-v3.png"
+                             alt="Logo"
+                             class="img-fluid"
+                             style="max-height:120px; width:auto;"
+                             asp-append-version="true" />
+                    </div>
+
+                    <h1 class="h4 text-center mb-3">@ViewData["Title"]</h1>
+
+                    <form id="account" method="post" asp-route-returnUrl="@returnUrl" class="needs-validation" novalidate>
+                        <div asp-validation-summary="ModelOnly" class="text-danger small mb-3" role="alert"></div>
+
+                        <div class="form-floating mb-3">
+                            <input asp-for="Input.Email" class="form-control" autocomplete="username" aria-required="true" placeholder="name@example.com" />
+                            <label asp-for="Input.Email" class="form-label"></label>
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="form-floating mb-2">
+                            <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                            <label asp-for="Input.Password" class="form-label"></label>
+                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex align-items-center justify-content-between mb-3">
+                            <div class="form-check">
+                                <input class="form-check-input" asp-for="Input.RememberMe" />
+                                <label asp-for="Input.RememberMe" class="form-check-label"></label>
+                            </div>
+                            <a id="forgot-password" asp-page="./ForgotPassword" class="link-primary">Forgot password?</a>
+                        </div>
+
+                        <button id="login-submit" type="submit" class="btn btn-primary w-100 btn-lg">Log in</button>
+
+                        <div class="text-center mt-3">
+                            <a id="resend-confirmation" asp-page="./ResendEmailConfirmation" class="small">Resend email confirmation</a>
+                        </div>
+                    </form>
+
+                    @* ----- External providers (null-safe) ----- *@
+                    @if (externalLogins.Count > 0)
+                    {
+                        <hr class="my-4" />
+                        <div class="text-center mb-2">
+                            <span class="text-muted small">Or continue with</span>
+                        </div>
+
+                        <form id="external-account" asp-page="./ExternalLogin" method="post" asp-route-returnUrl="@returnUrl" class="d-grid gap-2">
+                            <div class="row g-2">
+                                @foreach (var provider in externalLogins)
+                                {
+                                    var display = string.IsNullOrWhiteSpace(provider.DisplayName) ? provider.Name : provider.DisplayName;
+                                    <div class="col-12">
+                                        <button type="submit"
+                                                class="btn btn-outline-secondary w-100"
+                                                name="provider"
+                                                value="@provider.Name"
+                                                title="Log in using your @display account">
+                                            @display
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+                        </form>
+                    }
+                </div>
+            </div>
+
+            @* Optional footer links *@
+            <div class="text-center mt-3">
+                @* If you ever re-enable self-registration: *@
+                @* <a asp-page="./Register" asp-route-returnUrl="@returnUrl">Register as a new user</a> *@
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

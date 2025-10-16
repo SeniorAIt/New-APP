@@ -1,0 +1,254 @@
+﻿@model IEnumerable<WorkbookManagement.Models.Submission>
+@using WorkbookManagement.Models
+@{
+    ViewData["Title"] = "Submissions";
+
+    // Groupings
+    var approved = Model.Where(s => s.Status == SubmissionBundleStatus.Approved)
+                         .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
+                         .ToList();
+
+    var pending = Model.Where(s => s.Status == SubmissionBundleStatus.Submitted)
+                         .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
+                         .ToList();
+
+    var rejected = Model.Where(s => s.Status == SubmissionBundleStatus.Rejected)
+                         .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
+                         .ToList();
+
+    // Everything else so users can still work and submit
+    var inProgress = Model.Where(s =>
+                        s.Status != SubmissionBundleStatus.Approved &&
+                        s.Status != SubmissionBundleStatus.Submitted &&
+                        s.Status != SubmissionBundleStatus.Rejected)
+                        .OrderByDescending(s => s.UpdatedAt ?? s.CreatedAt)
+                        .ToList();
+
+    // small helper for badge class (this is a plain lambda, not a Razor function)
+    Func<SubmissionBundleStatus, string> badge = st => st switch
+    {
+        SubmissionBundleStatus.Approved => "bg-success",
+        SubmissionBundleStatus.Submitted => "bg-info",
+        SubmissionBundleStatus.Rejected => "bg-danger",
+        SubmissionBundleStatus.Completed => "bg-primary",
+        SubmissionBundleStatus.InProgress => "bg-warning text-dark",
+        _ => "bg-secondary"
+    };
+}
+
+<h2 class="mb-3">Submissions</h2>
+
+@if (TempData["ok"] is string ok && !string.IsNullOrWhiteSpace(ok))
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["err"] is string err && !string.IsNullOrWhiteSpace(err))
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+@* (New Submission button removed) *@
+
+@* ---------- APPROVED ---------- *@
+@if (approved.Any())
+{
+    <h5 class="mt-4 mb-2">Approved</h5>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Submission</th>
+                    <th>Status</th>
+                    <th>Workbooks</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th class="text-end" style="width:200px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in approved)
+                {
+                    var total = s.Workbooks?.Count ?? 0;
+                    var done = s.Workbooks?.Count(w => w.Status != SubmissionStatus.Draft) ?? 0;
+
+                    <tr>
+                        <td><code>@s.Id.ToString().Substring(0, 8)</code></td>
+                        <td><span class="badge @badge(s.Status)">@s.Status</span></td>
+                        <td>@done / 3</td>
+                        <td>@s.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                        <td>@(s.UpdatedAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-secondary btn-sm"
+                               asp-controller="Submissions" asp-action="Details" asp-route-id="@s.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@* ---------- PENDING (Submitted) ---------- *@
+@if (pending.Any())
+{
+    <h5 class="mt-4 mb-2">Pending (Submitted)</h5>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Submission</th>
+                    <th>Status</th>
+                    <th>Workbooks</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th class="text-end" style="width:200px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in pending)
+                {
+                    var total = s.Workbooks?.Count ?? 0;
+                    var done = s.Workbooks?.Count(w => w.Status != SubmissionStatus.Draft) ?? 0;
+
+                    <tr>
+                        <td><code>@s.Id.ToString().Substring(0, 8)</code></td>
+                        <td><span class="badge @badge(s.Status)">@s.Status</span></td>
+                        <td>@done / 3</td>
+                        <td>@s.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                        <td>@(s.UpdatedAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-secondary btn-sm"
+                               asp-controller="Submissions" asp-action="Details" asp-route-id="@s.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@* ---------- REJECTED ---------- *@
+@if (rejected.Any())
+{
+    <h5 class="mt-4 mb-2">Rejected</h5>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Submission</th>
+                    <th>Status</th>
+                    <th>Workbooks</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th class="text-end" style="width:200px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in rejected)
+                {
+                    var total = s.Workbooks?.Count ?? 0;
+                    var done = s.Workbooks?.Count(w => w.Status != SubmissionStatus.Draft) ?? 0;
+
+                    <tr>
+                        <td><code>@s.Id.ToString().Substring(0, 8)</code></td>
+                        <td><span class="badge @badge(s.Status)">@s.Status</span></td>
+                        <td>@done / 3</td>
+                        <td>@s.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                        <td>@(s.UpdatedAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-secondary btn-sm"
+                               asp-controller="Submissions" asp-action="Details" asp-route-id="@s.Id">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@* ---------- IN PROGRESS (Draft / InProgress / Completed) ---------- *@
+@if (inProgress.Any())
+{
+    <h5 class="mt-4 mb-2">In Progress (Draft / InProgress / Completed)</h5>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle">
+            <thead>
+                <tr>
+                    <th>Submission</th>
+                    <th>Status</th>
+                    <th>Workbooks</th>
+                    <th>Created</th>
+                    <th>Updated</th>
+                    <th class="text-end" style="width:360px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in inProgress)
+                {
+                    var total = s.Workbooks?.Count ?? 0;
+                    var done = s.Workbooks?.Count(w => w.Status != SubmissionStatus.Draft) ?? 0;
+                    var allCompleted = (total == 3 && done == 3);
+                    var nextWb = s.Workbooks?
+                    .OrderBy(w => w.WorkbookType)
+                    .FirstOrDefault(w => w.Status == SubmissionStatus.Draft);
+
+                    <tr>
+                        <td><code>@s.Id.ToString().Substring(0, 8)</code></td>
+                        <td><span class="badge @badge(s.Status)">@s.Status</span></td>
+                        <td>@done / 3</td>
+                        <td>@s.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                        <td>@(s.UpdatedAt?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")</td>
+                        <td class="text-end">
+                            <a class="btn btn-outline-secondary btn-sm"
+                               asp-controller="Submissions" asp-action="Details" asp-route-id="@s.Id">View</a>
+
+                            @* Continue to next incomplete workbook *@
+                            @if (nextWb != null)
+                            {
+                                <a class="btn btn-primary btn-sm"
+                                   asp-controller="Workbooks" asp-action="Open" asp-route-id="@nextWb.Id">Continue</a>
+                            }
+                            else
+                            {
+                                <button class="btn btn-primary btn-sm" type="button" disabled>Continue</button>
+                            }
+
+                            @* Submit (renamed from "Submit All") *@
+                            @if (allCompleted && s.Status != SubmissionBundleStatus.Submitted)
+                            {
+                                <form asp-controller="Submissions" asp-action="Submit" asp-route-id="@s.Id"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Submit this bundle? No further edits will be allowed unless reopened.');">
+                                    <button class="btn btn-success btn-sm" type="submit">Submit</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="btn btn-success btn-sm" type="button" disabled>Submit</button>
+                            }
+
+                            @* Delete (draft only) *@
+                            @if (s.Status == SubmissionBundleStatus.Draft)
+                            {
+                                <form asp-controller="Submissions" asp-action="Delete" asp-route-id="@s.Id"
+                                      method="post" class="d-inline"
+                                      onsubmit="return confirm('Delete this draft submission and all its workbooks?');">
+                                    <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <button class="btn btn-danger btn-sm" type="button" disabled>Delete</button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (!approved.Any() && !pending.Any() && !rejected.Any() && !inProgress.Any())
+{
+    <div class="alert alert-info mt-3">No submissions yet.</div>
+}

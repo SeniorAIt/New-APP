@@ -1,0 +1,48 @@
+﻿@model WorkbookManagement.Models.WorkbookSubmission
+@{
+    var pretty = ViewBag.PrettyJson as string ?? "{}";
+    ViewData["Title"] = Model.Title;
+}
+
+<h4 class="fw-bold mb-3">Workbook — View</h4>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="border p-3">
+            <div class="row mb-2">
+                <div class="col-4 text-uppercase small fw-semibold">Title</div>
+                <div class="col">@Model.Title</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-4 text-uppercase small fw-semibold">Type</div>
+                <div class="col">@Model.WorkbookType</div>
+            </div>
+            <div class="row mb-2">
+                <div class="col-4 text-uppercase small fw-semibold">Status</div>
+                <div class="col">@Model.Status</div>
+            </div>
+            <div class="row">
+                <div class="col-4 text-uppercase small fw-semibold">Updated</div>
+                <div class="col">@Model.UpdatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="border p-3 h-100">
+            <div class="small text-uppercase fw-semibold mb-2">Data (read-only)</div>
+            <pre class="mb-0" style="white-space:pre-wrap; font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;">@pretty</pre>
+
+            @if (ViewBag.EditUrl is string editUrl && !string.IsNullOrEmpty(editUrl))
+            {
+                <div class="mt-3">
+                    <a href="@editUrl" class="btn btn-outline-primary btn-sm">Open (edit)</a>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a asp-action="Index" class="btn btn-secondary btn-sm">Back to list</a>
+</div>

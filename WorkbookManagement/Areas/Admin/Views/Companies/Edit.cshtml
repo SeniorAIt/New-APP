@@ -1,0 +1,42 @@
+﻿@model WorkbookManagement.Models.Company
+@{
+    ViewData["Title"] = "Edit Company";
+}
+
+<h2 class="mb-3">Edit Company</h2>
+
+<form asp-area="Admin" asp-controller="Companies" asp-action="Edit" method="post">
+    <input type="hidden" asp-for="Id" />
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="Name" class="form-label">Name</label>
+            <input asp-for="Name" class="form-control" />
+            <span asp-validation-for="Name" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="ContactEmail" class="form-label">Contact Email</label>
+            <input asp-for="ContactEmail" class="form-control" />
+            <span asp-validation-for="ContactEmail" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="ContactPhone" class="form-label">Contact Phone</label>
+            <input asp-for="ContactPhone" class="form-control" />
+            <span asp-validation-for="ContactPhone" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 d-flex align-items-center">
+            <div class="form-check mt-4">
+                <input class="form-check-input" type="checkbox" asp-for="IsActive" id="IsActiveChk" />
+                <label class="form-check-label" for="IsActiveChk">Active</label>
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-3 d-flex gap-2">
+        <a class="btn btn-secondary btn-sm" asp-area="Admin" asp-controller="Companies" asp-action="Index">Back</a>
+        <button class="btn btn-primary btn-sm" type="submit">Save</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

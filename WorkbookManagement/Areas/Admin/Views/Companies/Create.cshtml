@@ -1,0 +1,37 @@
+﻿@model WorkbookManagement.Models.Company
+@{
+    ViewData["Title"] = "New Company";
+}
+<h2>New Company</h2>
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <input asp-for="Name" class="form-control" />
+        <span asp-validation-for="Name" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Contact Email</label>
+        <input asp-for="ContactEmail" class="form-control" />
+        <span asp-validation-for="ContactEmail" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Contact Phone</label>
+        <input asp-for="ContactPhone" class="form-control" />
+        <span asp-validation-for="ContactPhone" class="text-danger"></span>
+    </div>
+
+    <div class="form-check mb-3">
+        <input class="form-check-input" asp-for="IsActive" />
+        <label class="form-check-label" for="IsActive">Active</label>
+    </div>
+
+    <button class="btn btn-success" type="submit">Create</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,299 @@
+﻿@model WorkbookManagement.Models.OrgInfoSection1
+@using WorkbookManagement.Models
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Org Info — Page 3 of 8";
+
+    // Provinces from controller
+    var provinces = (IEnumerable<string>)(ViewBag.Provinces ?? Array.Empty<string>());
+
+    // Province select items (blank option first)
+    var provinceItems = new List<SelectListItem> { new SelectListItem { Text = "", Value = "" } };
+    provinceItems.AddRange(provinces.Select(p => new SelectListItem { Text = p, Value = p }));
+
+    // Status select items (blank option first) — ApprovalStatus? should be nullable in the model
+    var statusItems = Html.GetEnumSelectList<ApprovalStatus>().ToList();
+    statusItems.Insert(0, new SelectListItem { Text = "", Value = "" });
+
+    bool showOtherInstitution = string.Equals(Model?.TypeOfInstitution, "Other", StringComparison.OrdinalIgnoreCase);
+    bool canSaveProfile = (ViewBag.CanSaveProfile == true);
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 6px;
+        padding: 14px;
+        margin-bottom: 14px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    .label-sm {
+        font-weight: 600;
+        font-size: .9rem;
+    }
+
+    .tight-table th, .tight-table td {
+        padding: .25rem .4rem;
+        vertical-align: middle;
+    }
+
+    .dotted {
+        border-style: dotted;
+    }
+
+    .req::after {
+        content: " *";
+        color: #dc3545;
+        font-weight: 700;
+    }
+</style>
+
+<div class="container mt-3">
+    <h3>PART 1:- ADMINISTRATIVE / HEAD OFFICE</h3>
+
+    <!-- Explicitly post back to Step3 with the workbook id -->
+    <form method="post" asp-action="Step3" asp-route-id="@ViewBag.Id" novalidate>
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="box">
+            <h6>Company Details</h6>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="label-sm">APPETD REG No.</label>
+                    <input asp-for="AppetdRegNo" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-3">
+                    <label class="label-sm">YEARS REG/ACCREDITED.</label>
+                    <input asp-for="YearsRegAccredited" type="number" min="0" step="1" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="label-sm req">LEGAL REGISTERED NAME</label>
+                    <input asp-for="LegalRegisteredName" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="label-sm">TRADING NAME</label>
+                    <input asp-for="TradingName" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">COMPANY/NPC/NPO REG No.</label>
+                    <input asp-for="CompanyNpcNpoRegNo" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-2">
+                    <label class="label-sm">BBBEE LEVEL</label>
+                    <select asp-for="BBBEELevel" class="form-select form-select-sm">
+                        <option value=""></option>
+                        <option>1</option>
+                        <option>2</option>
+                        <option>3</option>
+                        <option>4</option>
+                        <option>5</option>
+                        <option>6</option>
+                        <option>7</option>
+                        <option>8</option>
+                        <option>Non Compliant</option>
+                    </select>
+                </div>
+
+                <div class="col-md-3">
+                    <label class="label-sm">REGISTERED/ACCREDITED SINCE</label>
+                    <input asp-for="RegisteredAccreditedSince" type="date" class="form-control form-control-sm dotted" />
+                </div>
+
+                <!-- TYPE OF INSTITUTION -->
+                <div class="col-md-5">
+                    <label class="label-sm">TYPE OF INSTITUTION</label>
+                    <select asp-for="TypeOfInstitution" class="form-select form-select-sm" id="TypeOfInstitution">
+                        <option value="">— Select —</option>
+                        <option value="PU">Public University</option>
+                        <option value="UT">Public University of Technology</option>
+                        <option value="TVET">Public TVET College</option>
+                        <option value="CETC">Public Community Education and Training College</option>
+                        <option value="PHEI">Private Higher Education Institution</option>
+                        <option value="PC">Private College (FET Level)</option>
+                        <option value="SDP">Private Skills Development Provider(SDP)</option>
+                        <option value="NGO">Non-Governmental Organisation (NGO) Providing Training</option>
+                        <option value="SDP">Accredited/Registered Industry SDP</option>
+                        <option value="PPP">Private/Public Partnership</option>
+                        <option value="CTD">Corporate Training Division/Academy</option>
+                        <option value="Other">Other (Specify)</option>
+                    </select>
+                </div>
+
+                <!-- Other (Specify) -->
+                <div class="col-md-4 @(showOtherInstitution ? "" : "d-none")" id="otherSpecifyWrap">
+                    <label class="label-sm">Other (Specify)</label>
+                    <input asp-for="OtherSpecify" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-12">
+                    <label class="label-sm">STREET ADDRESS 1</label>
+                    <input asp-for="StreetAddress1" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-12">
+                    <label class="label-sm">STREET ADDRESS 2</label>
+                    <input asp-for="StreetAddress2" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">TOWN/CITY</label>
+                    <input asp-for="TownCity" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">PROVINCE</label>
+                    <select asp-for="Province" class="form-select form-select-sm" asp-items="provinceItems"></select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">LOCAL MUNICIPALITY</label>
+                    <input asp-for="LocalMunicipality" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">POST CODE</label>
+                    <input asp-for="PostCode" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-8">
+                    <label class="label-sm">DISTRICT MUNICIPALITY</label>
+                    <input asp-for="DistrictMunicipality" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-12">
+                    <label class="label-sm">POSTAL ADDRESS</label>
+                    <input asp-for="PostalAddress" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">TOWN/CITY</label>
+                    <input asp-for="PostalTownCity" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">PROVINCE</label>
+                    <select asp-for="PostalProvince" class="form-select form-select-sm" asp-items="provinceItems"></select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="label-sm">POST CODE</label>
+                    <input asp-for="PostalPostCode" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="label-sm">GENERAL CONTACT No.</label>
+                    <input asp-for="GeneralContactNo" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-6">
+                    <label class="label-sm">GENERAL EMAIL</label>
+                    <input asp-for="GeneralEmail" class="form-control form-control-sm dotted" />
+                </div>
+
+                <div class="col-md-12">
+                    <label class="label-sm">WEBSITE URL</label>
+                    <input asp-for="WebsiteUrl" class="form-control form-control-sm dotted" />
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h6>Accreditation / Registration / Approval</h6>
+            <div class="table-responsive">
+                <table class="table table-sm tight-table">
+                    <thead>
+                        <tr>
+                            <th style="width:50%">Item</th>
+                            <th style="width:20%">Status</th>
+                            <th style="width:15%">Date</th>
+                            <th style="width:15%">Future</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (var i = 0; i < (Model.Approvals?.Count ?? 0); i++)
+                        {
+                            <tr>
+                                <td>
+                                    @Model.Approvals![i].Name
+                                    @if (Model.Approvals![i].IsOther)
+                                    {
+                                        <div class="mt-1">
+                                            <small>(specify)</small>
+                                            <input asp-for="Approvals[@i].OtherSpecify" class="form-control form-control-sm dotted" />
+                                        </div>
+                                    }
+                                    <input asp-for="Approvals[@i].Name" type="hidden" />
+                                    <input asp-for="Approvals[@i].IsOther" type="hidden" />
+                                </td>
+
+                                <td>
+                                    <select asp-for="Approvals[@i].Status"
+                                            class="form-select form-select-sm"
+                                            asp-items="statusItems"></select>
+                                </td>
+
+                                <td>
+                                    <input asp-for="Approvals[@i].Date" type="date" class="form-control form-control-sm dotted" />
+                                </td>
+
+                                <td class="text-center">
+                                    <input asp-for="Approvals[@i].Future" type="checkbox" class="form-check-input" />
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
+
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save</button>
+
+            @* Only show this when editing the Org Info profile (no SubmissionId) *@
+            @if (canSaveProfile)
+            {
+                <button class="btn btn-success" name="nav" value="saveprofile" type="submit"
+                        title="Save these details to your Organisation profile for future submissions">
+                    Save Organisation Profile
+                </button>
+            }
+
+            <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Toggle visibility of "Other (Specify)" when TypeOfInstitution == 'Other'
+        (function () {
+            const sel = document.getElementById('TypeOfInstitution');
+            const wrap = document.getElementById('otherSpecifyWrap');
+            function toggle() {
+                if (!sel || !wrap) return;
+                wrap.classList.toggle('d-none', sel.value !== 'Other');
+            }
+            sel && sel.addEventListener('change', toggle);
+            toggle(); // initial state
+        })();
+    </script>
+}

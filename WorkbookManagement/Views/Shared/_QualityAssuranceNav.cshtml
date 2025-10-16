@@ -1,0 +1,131 @@
+﻿@* Workbook 2: Quality Assurance – navigation & footer buttons
+   Modes:
+     - header (default): top step tabs + progress
+     - footer: form submit buttons (Previous / Save Draft / Finish), customizable per page
+
+   Expects:
+     - ViewBag.Id                : int (workbook submission id)
+     - ViewBag.ReadOnly          : bool (controls Save/Finish visibility)
+     - ViewData["QaNavMode"]     : "header" | "footer" (optional; default "header")
+     - ViewData["QaHidePrev"]    : bool (optional; footer-only; default false)
+     - ViewData["QaShowSave"]    : bool (optional; footer-only; default true)
+     - ViewData["QaFinishLabel"] : string (optional; footer-only; default "Finish")
+*@
+
+@{
+    var id = ViewBag.Id as int? ?? 0;
+    var action = (ViewContext.RouteData.Values["action"]?.ToString() ?? "");
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+    var mode = (ViewData["QaNavMode"] as string)?.ToLowerInvariant() ?? "header";
+
+    var steps = new (string Action, string Label)[]
+    {
+        ("Step1",  "Overview"),
+        ("Step2",  "Guide"),
+        ("Step3",  "Summary"),
+        ("Step4",  "Info"),
+        ("Step5",  "GEL"),
+        ("Step6",  "SPR"),
+        ("Step7",  "TLA"),
+        ("Step8",  "LSW"),
+        ("Step9",  "SCE"),
+        ("Step10", "RLE"),
+        ("Step11", "QMI"),
+        ("Step12", "SEC"),
+        ("Step13", "LCR")
+    };
+
+    int currentIndex = System.Array.FindIndex(
+        steps, s => s.Action.Equals(action, System.StringComparison.OrdinalIgnoreCase));
+    if (currentIndex < 0) currentIndex = 0;
+
+    decimal pct = (decimal)(currentIndex + 1) / steps.Length * 100m;
+}
+
+@if (mode == "header")
+{
+    <style>
+        .qa-stepper-wrap {
+            position: sticky;
+            top: 0;
+            z-index: 1010;
+            background: #fff;
+            padding-top: .5rem;
+            padding-bottom: .25rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .qa-stepper .nav-link {
+            display: inline-flex;
+            align-items: center;
+            gap: .4rem;
+            padding: .35rem .6rem;
+            font-size: .95rem;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+
+        .qa-stepper {
+            row-gap: .35rem;
+        }
+    </style>
+
+    <div class="qa-stepper-wrap mb-3">
+        <div class="container px-0">
+            <ul class="nav nav-pills flex-wrap qa-stepper">
+                @for (int i = 0; i < steps.Length; i++)
+                {
+                    var step = steps[i];
+                    bool active = i == currentIndex;
+                    <li class="nav-item me-1">
+                        <a class="nav-link @(active ? "active" : "")"
+                           asp-controller="QualityAssurance"
+                           asp-action="@step.Action"
+                           asp-route-id="@id">
+                            <span class="badge rounded-pill @(active ? "text-bg-light" : "bg-light text-dark")">
+                                @(i + 1)
+                            </span>
+                            @step.Label
+                        </a>
+                    </li>
+                }
+            </ul>
+
+            <div class="progress mt-2" style="height:6px;">
+                <div class="progress-bar" role="progressbar" style="width:@($"{pct}%")"></div>
+            </div>
+        </div>
+    </div>
+}
+else if (mode == "footer")
+{
+    var hidePrev = (bool?)ViewData["QaHidePrev"] ?? false;
+    var showSave = (bool?)ViewData["QaShowSave"] ?? true;
+    var finishLabel = (string)(ViewData["QaFinishLabel"] as string ?? "Finish");
+
+    <div class="d-flex gap-2 justify-content-between align-items-center mt-3">
+        <div>
+            @if (!hidePrev)
+            {
+                <button type="submit" name="nav" value="prev" class="btn btn-secondary">
+                    Previous
+                </button>
+            }
+        </div>
+
+        @if (!readOnly)
+        {
+            <div class="d-flex gap-2">
+                @if (showSave)
+                {
+                    <button type="submit" name="nav" value="save" class="btn btn-outline-primary">
+                        Save Draft
+                    </button>
+                }
+                <button type="submit" name="nav" value="next" class="btn btn-success">
+                    @finishLabel
+                </button>
+            </div>
+        }
+    </div>
+}

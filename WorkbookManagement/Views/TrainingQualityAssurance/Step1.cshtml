@@ -1,0 +1,110 @@
+﻿@model WorkbookManagement.Models.TqaGuide
+@{
+    ViewData["Title"] = "Guide – Pre-Delivery QA";
+    var id = (int)ViewBag.Id;
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+
+    // IMPORTANT: set these BEFORE rendering the header partial
+    ViewData["TqaActiveStep"] = 1;   // Step 1
+    ViewData["TqaTotalSteps"] = 8;   // TQA has 8 steps
+}
+
+@* Top step tabs + progress bar *@
+@await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+
+<h6 class="text-uppercase fw-bold mb-2">GUIDE:- PRE-DELIVERY QUALITY ASSURANCE</h6>
+
+<div class="box leadish">
+    <ol class="guide-list">
+        <li>Completed by all providers applying for or already accredited under the <em>Gold Standard</em>.</li>
+        <li>The assessment must be completed for all accredited sites at the start of each new training intervention.</li>
+        <li>All sections must be completed &amp; findings verified.</li>
+        <li>
+            Compliance Indicators (CI):
+            <span class="ci ci-3">3 = Compliant</span>,
+            <span class="ci ci-2">2 = Not Compliant</span>,
+            <span class="ci ci-1">1 = Not Applicable</span>
+        </li>
+        <li>Motivation must be provided for all items marked as <span class="ci ci-1">(1) Not Applicable</span>.</li>
+        <li>
+            Items marked as <span class="ci ci-2">(2) Not Compliant</span>
+            <ol class="mt-2">
+                <li>Corrective Action (CA) must be outlined.</li>
+                <li>CA must be assigned to a responsible person with a target Close Out (CO) date (within 7 days of assessment date).</li>
+                <li>Internal assessor/verifier must check that CA has been taken by the CO date.</li>
+                <li>Once all CA has been implemented &amp; verified, reassessment can be requested.</li>
+            </ol>
+        </li>
+        <li>
+            Part 2 – Equipment must be completed in line with course requirements as per the accreditation body (minimum standard).
+            <ol class="mt-2">
+                <li>Condition and availability of equipment must be verified.</li>
+                <li>CA and CO dates must be assigned for all non-conformances.</li>
+                <li>Equipment is allocated to Facilitators &amp; Learners.</li>
+                <li>
+                    Ratio assists in defining required quantities:
+                    <span class="pill">1:1</span> (one item per person),
+                    <span class="pill">1:4</span> (one item used per four people),
+                    <span class="pill">3:1</span> (three items required per person).
+                </li>
+            </ol>
+        </li>
+    </ol>
+</div>
+
+<form method="post" asp-action="Step1" asp-route-id="@id">
+    @Html.AntiForgeryToken()
+
+    @* Footer buttons from TQA Nav *@
+    @{
+        ViewData["TqaNavMode"] = "footer";
+        ViewData["TqaFinishLabel"] = "Next";   // Step 1 shows "Next"
+                                               // DO NOT set TqaTotalSteps here; we already set it to 8 above
+    }
+    @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+</form>
+
+@section Styles {
+    <style>
+        .box {
+            border: 1px solid #bfbfbf;
+            border-radius: 10px;
+            padding: 16px;
+            background: #fff;
+        }
+
+        .leadish {
+            font-size: 1.02rem;
+            line-height: 1.5;
+        }
+
+        .guide-list li {
+            margin-bottom: .45rem;
+        }
+
+        .ci-3 {
+            color: #198754;
+            font-weight: 600;
+        }
+
+        .ci-2 {
+            color: #dc3545;
+            font-weight: 600;
+        }
+
+        .ci-1 {
+            color: #d39e00;
+            font-weight: 600;
+            text-decoration: line-through;
+        }
+
+        .pill {
+            border: 2px dotted #6c757d;
+            border-radius: .25rem;
+            padding: .05rem .4rem;
+            font-weight: 600;
+            background: #fff;
+            margin: 0 .25rem;
+        }
+    </style>
+}

@@ -1,0 +1,123 @@
+﻿@{
+    ViewData["Title"] = "QA — Page 2 of 13 (Guide)";
+    var id = (int)ViewBag.Id;
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+}
+
+@* Top step tabs *@
+@await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+    .leadish {
+        font-size: 1.02rem;
+        line-height: 1.5;
+    }
+
+    .pill {
+        display: inline-block;
+        margin: 0 .2rem;
+        padding: .1rem .45rem;
+        border-radius: .25rem;
+        border: 2px dotted #6c757d;
+        background: #fff;
+        font-weight: 600;
+        font-size: .9rem;
+    }
+
+    /* Guide-specific accents */
+    .gs-list li {
+        margin-bottom: .45rem;
+    }
+
+    .ci {
+        font-weight: 600;
+    }
+
+    .ci-3 {
+        color: #198754;
+    }
+    /* Compliant */
+    .ci-2 {
+        color: #dc3545;
+    }
+    /* Not Compliant */
+    .ci-1 {
+        color: #d39e00;
+        text-decoration: line-through;
+    }
+    /* Not Applicable */
+</style>
+
+<div class="container mt-3">
+    <h5 class="fw-bold text-uppercase">GUIDE: GOLD STANDARD</h5>
+
+    <div class="box leadish">
+        <ol class="mt-2 gs-list">
+            <li>
+                In order to apply for Gold Standard Accreditation, an organisation must have current accreditation
+                with at least one recognised body/standard.
+            </li>
+
+            <li>All sections must be completed and evidence verified.</li>
+
+            <li>
+                Compliance Indicators (CI):
+                <span class="ci ci-3">3 = Compliant</span>,
+                <span class="ci ci-2">2 = Not Compliant</span>,
+                <span class="ci ci-1">1 = Not Applicable</span>
+            </li>
+
+            <li>Motivation must be provided for all items marked as <span class="ci ci-1">(1) Not Applicable</span>.</li>
+
+            <li>
+                Items marked as <span class="ci ci-2">(2) Not Compliant</span>:
+                <ol class="mt-2">
+                    <li>Corrective Action (CA) must be outlined.</li>
+                    <li>CA must be assigned to a responsible person with a target Close Out (CO) Date.</li>
+                    <li>All CA must be completed within <span class="pill">14</span> days of the assessment.</li>
+                    <li>An internal assessor/verifier must check that CA has been taken by the CO date.</li>
+                    <li>Once all CA has been implemented &amp; verified, reassessment can be requested.</li>
+                    <li>Reassessment will occur within <span class="pill">30</span> days of CA completion.</li>
+                    <li>Organisations may apply in writing for extensions of deadline dates if required.</li>
+                </ol>
+            </li>
+
+            <li>
+                To attain Gold Standard Accreditation an organisation must achieve a minimum of
+                <span class="pill">95%</span> compliance.
+            </li>
+
+            <li>
+                Summary sheet (dashboard): Select and change the category code to see an overview of different sections.
+            </li>
+        </ol>
+    </div>
+
+    <form method="post" asp-action="Step2" asp-route-id="@id">
+        @Html.AntiForgeryToken()
+
+        @* If inputs are added later, keep them inside this fieldset so read-only works *@
+        <fieldset @(readOnly ? "disabled" : null)>
+            @* (no inputs on this page) *@
+        </fieldset>
+
+        @* Footer buttons from QANav:
+           - show Previous on this page
+           - show Save Draft
+           - label the submit "Next"
+        *@
+        @{
+            ViewData["QaNavMode"] = "footer";
+            ViewData["QaFinishLabel"] = "Next";
+        }
+        @await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+    </form>
+</div>

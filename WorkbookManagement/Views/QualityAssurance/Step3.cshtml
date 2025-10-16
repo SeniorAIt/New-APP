@@ -1,0 +1,244 @@
+﻿@model WorkbookManagement.Models.QaSummary
+@using System.Text.Json
+@{
+    ViewData["Title"] = "QA — Page 3 of 13 (Summary)";
+    var id = (int)ViewBag.Id;
+
+    // Overall (0..1 fractions)
+    string[] catLabels = ViewBag.CatLabels ?? Array.Empty<string>();
+    double[] catComp   = ViewBag.CatComp   ?? Array.Empty<double>();
+    double[] catNComp  = ViewBag.CatNComp  ?? Array.Empty<double>();
+
+    // GEL (existing)
+    string[] gelLabels = ViewBag.GelLabels ?? Array.Empty<string>();
+    double[] gelComp   = ViewBag.GelComp   ?? Array.Empty<double>();
+    double[] gelNComp  = ViewBag.GelNComp  ?? Array.Empty<double>();
+
+    // Other sections (might be empty if not computed yet)
+    string[] sprLabels = ViewBag.SprLabels ?? Array.Empty<string>();
+    double[] sprComp   = ViewBag.SprComp   ?? Array.Empty<double>();
+    double[] sprNComp  = ViewBag.SprNComp  ?? Array.Empty<double>();
+
+    string[] tlaLabels = ViewBag.TlaLabels ?? Array.Empty<string>();
+    double[] tlaComp   = ViewBag.TlaComp   ?? Array.Empty<double>();
+    double[] tlaNComp  = ViewBag.TlaNComp  ?? Array.Empty<double>();
+
+    string[] lswLabels = ViewBag.LswLabels ?? Array.Empty<string>();
+    double[] lswComp   = ViewBag.LswComp   ?? Array.Empty<double>();
+    double[] lswNComp  = ViewBag.LswNComp  ?? Array.Empty<double>();
+
+    string[] sceLabels = ViewBag.SceLabels ?? Array.Empty<string>();
+    double[] sceComp   = ViewBag.SceComp   ?? Array.Empty<double>();
+    double[] sceNComp  = ViewBag.SceNComp  ?? Array.Empty<double>();
+
+    string[] rleLabels = ViewBag.RleLabels ?? Array.Empty<string>();
+    double[] rleComp   = ViewBag.RleComp   ?? Array.Empty<double>();
+    double[] rleNComp  = ViewBag.RleNComp  ?? Array.Empty<double>();
+
+    string[] qmiLabels = ViewBag.QmiLabels ?? Array.Empty<string>();
+    double[] qmiComp   = ViewBag.QmiComp   ?? Array.Empty<double>();
+    double[] qmiNComp  = ViewBag.QmiNComp  ?? Array.Empty<double>();
+
+    string[] secLabels = ViewBag.SecLabels ?? Array.Empty<string>();
+    double[] secComp   = ViewBag.SecComp   ?? Array.Empty<double>();
+    double[] secNComp  = ViewBag.SecNComp  ?? Array.Empty<double>();
+
+    string[] lcrLabels = ViewBag.LcrLabels ?? Array.Empty<string>();
+    double[] lcrComp   = ViewBag.LcrComp   ?? Array.Empty<double>();
+    double[] lcrNComp  = ViewBag.LcrNComp  ?? Array.Empty<double>();
+
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+}
+
+@* Top step tabs *@
+@await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    .leadish {
+        font-size: 1.02rem;
+        line-height: 1.5;
+    }
+
+    .chart-card {
+        border: 1px solid #dee2e6;
+        border-radius: 10px;
+        padding: 12px;
+        background: #fff;
+    }
+</style>
+
+<div class="container mt-3">
+    <h5 class="fw-bold text-uppercase">SUMMARY DASHBOARD</h5>
+
+    <div class="box leadish">
+        <p class="mb-2">
+            This dashboard summarises compliance across all sections. Percentages show
+            <strong>compliant vs not compliant</strong> out of <em>applicable</em> criteria
+            (CI in {2,3}). Items marked <em>Not Applicable</em> (CI=1) are excluded from the percentages.
+        </p>
+        <p class="mb-0">
+            Use the <strong>Breakdown</strong> dropdown to switch between sections (GEL, SPR, TLA, LSW, SCE, RLE, QMI, SEC, LCR) and see which parts (e.g., GEL 1.1 …) are driving results.
+        </p>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <div class="fw-semibold text-uppercase mb-2">Overall by Category</div>
+                <canvas id="barOverall" height="300"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="chart-card">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <div class="fw-semibold text-uppercase">Breakdown</div>
+                    <select id="sectionSelect" class="form-select form-select-sm" style="width:auto">
+                        <option value="GEL">GEL</option>
+                        <option value="SPR">SPR</option>
+                        <option value="TLA">TLA</option>
+                        <option value="LSW">LSW</option>
+                        <option value="SCE">SCE</option>
+                        <option value="RLE">RLE</option>
+                        <option value="QMI">QMI</option>
+                        <option value="SEC">SEC</option>
+                        <option value="LCR">LCR</option>
+                    </select>
+                </div>
+                <canvas id="barBreakdown" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" asp-action="Step3" asp-route-id="@id" class="mt-3">
+        @Html.AntiForgeryToken()
+
+        <fieldset @(readOnly ? "disabled" : null)>
+            <div class="box">
+                <label class="form-label fw-semibold">Notes (optional)</label>
+                <textarea asp-for="HighLevelSummary" class="form-control" rows="3"
+                          placeholder="Add any insights or commentary about the overall QA results..."></textarea>
+            </div>
+        </fieldset>
+
+        @* Footer buttons from QANav *@
+        @{
+            ViewData["QaNavMode"] = "footer";
+            ViewData["QaFinishLabel"] = "Next";
+        }
+        @await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+    </form>
+</div>
+
+@* JSON payload kept in a non-executable script tag to avoid TS/JS parse warnings *@
+<script id="qa-summary-data" type="application/json">
+@Html.Raw(JsonSerializer.Serialize(new {
+    catLabels,
+    catComp,
+    catNComp,
+    sections = new {
+        GEL = new { labels = gelLabels, comp = gelComp, ncomp = gelNComp },
+        SPR = new { labels = sprLabels, comp = sprComp, ncomp = sprNComp },
+        TLA = new { labels = tlaLabels, comp = tlaComp, ncomp = tlaNComp },
+        LSW = new { labels = lswLabels, comp = lswComp, ncomp = lswNComp },
+        SCE = new { labels = sceLabels, comp = sceComp, ncomp = sceNComp },
+        RLE = new { labels = rleLabels, comp = rleComp, ncomp = rleNComp },
+        QMI = new { labels = qmiLabels, comp = qmiComp, ncomp = qmiNComp },
+        SEC = new { labels = secLabels, comp = secComp, ncomp = secNComp },
+        LCR = new { labels = lcrLabels, comp = lcrComp, ncomp = lcrNComp }
+    }
+}))
+</script>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            // Read JSON payload
+            const dataEl = document.getElementById('qa-summary-data');
+            let payload = { catLabels: [], catComp: [], catNComp: [], sections: {} };
+            if (dataEl && dataEl.textContent) {
+                try { payload = JSON.parse(dataEl.textContent); } catch (e) { console.warn('Bad summary data', e); }
+            }
+
+            const cats     = payload.catLabels || [];
+            const catComp  = payload.catComp   || [];
+            const catNComp = payload.catNComp  || [];
+            const sections = payload.sections  || {};
+
+            // Helper tick to show 0..100%
+            const pctTick = (v) => (v * 100).toFixed(0) + '%';
+
+            // Overall categories (stacked horizontal)
+            const ctxOverall = document.getElementById('barOverall');
+            if (ctxOverall) {
+                new Chart(ctxOverall, {
+                    type: 'bar',
+                    data: {
+                        labels: cats.slice().reverse(),
+                        datasets: [
+                            { label: 'Compliant',     data: catComp.slice().reverse(),  stack: 'x', borderWidth: 1 },
+                            { label: 'Not Compliant', data: catNComp.slice().reverse(), stack: 'x', borderWidth: 1 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        indexAxis: 'y',
+                        scales: {
+                            x: { min: 0, max: 1, ticks: { callback: pctTick } }
+                        }
+                    }
+                });
+            }
+
+            // Switchable breakdown (stacked vertical)
+            const ctxBreak = document.getElementById('barBreakdown');
+            if (!ctxBreak) return;
+
+            const chart = new Chart(ctxBreak, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [
+                        { label: 'Compliant',     data: [], stack: 's', borderWidth: 1 },
+                        { label: 'Not Compliant', data: [], stack: 's', borderWidth: 1 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: { stacked: true, min: 0, max: 1, ticks: { callback: pctTick } },
+                        x: { stacked: true }
+                    }
+                }
+            });
+
+            function renderSection(key) {
+                const s = sections[key] || { labels: [], comp: [], ncomp: [] };
+                chart.data.labels = s.labels || [];
+                chart.data.datasets[0].data = s.comp   || [];
+                chart.data.datasets[1].data = s.ncomp  || [];
+                chart.update();
+            }
+
+            const sel = document.getElementById('sectionSelect');
+            sel.addEventListener('change', () => renderSection(sel.value));
+
+            // Default to GEL (or whatever the select shows)
+            renderSection(sel.value);
+        })();
+    </script>
+}

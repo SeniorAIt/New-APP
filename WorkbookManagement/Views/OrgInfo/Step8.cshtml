@@ -1,0 +1,201 @@
+﻿@model WorkbookManagement.Models.OrgInfoPricingSection
+@{
+    ViewData["Title"] = "Org Info — Page 8 of 8";
+    var id = (int)ViewBag.Id;
+
+    var durUnits = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("", ""),
+        new("Hours","Hours"),
+        new("Days","Days"),
+        new("Months","Months"),
+        new("Years","Years"),
+    };
+
+    bool canSaveProfile = ViewBag.CanSaveProfile == true;
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    .tight-table th, .tight-table td {
+        padding: .45rem .6rem;
+        vertical-align: middle;
+    }
+
+    .nowrap {
+        white-space: nowrap;
+    }
+
+    .table-wide {
+        min-width: 2200px;
+    }
+
+    .cell-xl {
+        min-width: 360px;
+    }
+    /* Qualification Name */
+    .cell-l {
+        min-width: 220px;
+    }
+
+    .cell {
+        min-width: 180px;
+    }
+
+    .cell-s {
+        min-width: 140px;
+    }
+
+    .cell-xs {
+        min-width: 110px;
+    }
+
+    .tight-table td {
+        white-space: normal;
+        word-break: break-word;
+    }
+</style>
+
+<div class="container mt-3">
+    <h3>PART 6: - QUALIFICATIONS / PROGRAMMES / COURSES (PRICING)</h3>
+
+    <form method="post" asp-action="Step8" asp-route-id="@id">
+        @Html.AntiForgeryToken()
+        <div class="box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Pricing</h6>
+                <div class="text-muted small">
+                    Read-only identity columns are synced from Part 5.
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm tight-table table-wide" id="pricingTable">
+                    <thead>
+                        <tr>
+                            <th class="nowrap">CODE</th>
+                            <th class="nowrap">QUALIFICATION / PROGRAMME / COURSE</th>
+                            <th class="nowrap">TYPE</th>
+                            <th class="nowrap">NQF LEVEL</th>
+                            <th class="nowrap">CREDITS</th>
+
+                            <th class="nowrap">DURATION UNIT</th>
+                            <th class="nowrap">DURATION</th>
+                            <th class="nowrap">NOTIONAL HOURS</th>
+
+                            <th class="nowrap">REGISTRATION</th>
+                            <th class="nowrap">ADMIN</th>
+                            <th class="nowrap">FACILITATION</th>
+                            <th class="nowrap">TRAIN MATERIALS</th>
+                            <th class="nowrap">PPE/TOOLS/EQUIP</th>
+                            <th class="nowrap">OVERHEADS</th>
+                            <th class="nowrap">ASSESSMENT</th>
+                            <th class="nowrap">RE-ASSESS</th>
+                            <th class="nowrap">MODERATION</th>
+                            <th class="nowrap">OTHER</th>
+                            <th class="nowrap">CERTIFICATION</th>
+
+                            <th class="nowrap">TOTAL</th>
+                            <th class="nowrap">AVE / N HOUR</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < (Model.Items?.Count ?? 0); i++)
+                        {
+                            <tr class="pricing-row">
+                                <!-- READ-ONLY identity fields -->
+                                <td><input asp-for="Items[@i].Code" class="form-control form-control-sm cell-xs" readonly /></td>
+                                <td><input asp-for="Items[@i].QualificationName" class="form-control form-control-sm cell-xl" readonly /></td>
+                                <td><input asp-for="Items[@i].Type" class="form-control form-control-sm cell-s" readonly /></td>
+                                <td><input asp-for="Items[@i].NQFLevel" class="form-control form-control-sm cell-xs" readonly /></td>
+                                <td><input asp-for="Items[@i].Credits" type="number" class="form-control form-control-sm cell-xs" readonly /></td>
+
+                                <!-- Editable -->
+                                <td>
+                                    <select asp-for="Items[@i].DurationUnit" asp-items="durUnits" class="form-select form-select-sm cell-s"></select>
+                                </td>
+                                <td><input asp-for="Items[@i].Duration" type="number" step="0.01" class="form-control form-control-sm cell-xs" /></td>
+                                <td><input asp-for="Items[@i].NotionalHours" type="number" class="form-control form-control-sm cell-xs nh" /></td>
+
+                                <td><input asp-for="Items[@i].Registration" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].Admin" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].Facilitation" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].TrainMaterials" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].PpeToolsEquipment" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].Overheads" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].Assessment" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].ReAssess" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].Moderation" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].Other" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+                                <td><input asp-for="Items[@i].Certification" type="number" step="0.01" class="form-control form-control-sm cell-s cost" /></td>
+
+                                <td><input asp-for="Items[@i].Total" type="number" step="0.01" class="form-control form-control-sm cell-s total" readonly /></td>
+                                <td><input asp-for="Items[@i].AvePerNotionalHour" type="number" step="0.01" class="form-control form-control-sm cell-s ave" readonly /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
+
+            @if (canSaveProfile)
+            {
+                <button class="btn btn-outline-success" name="nav" value="saveprofile" type="submit"
+                        title="Also update your Organisation Info profile for future submissions">
+                    Save Organisation Profile
+                </button>
+            }
+
+            <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function(){
+          const body = document.querySelector('#pricingTable tbody');
+
+          function num(v){ const x = parseFloat(v); return isNaN(x) ? 0 : x; }
+
+          function recalcRow(tr){
+            const costs = tr.querySelectorAll('.cost');
+            let total = 0;
+            costs.forEach(i => total += num(i.value));
+            const nh = num(tr.querySelector('.nh')?.value || '');
+            const totalEl = tr.querySelector('.total');
+            const aveEl   = tr.querySelector('.ave');
+            if (totalEl) totalEl.value = total ? total.toFixed(2) : '';
+            if (aveEl)   aveEl.value   = (nh > 0 && total) ? (total/nh).toFixed(2) : '';
+          }
+
+          // recalc on any change
+          body.addEventListener('input', (e) => {
+            const tr = e.target.closest('tr.pricing-row');
+            if (tr) recalcRow(tr);
+          });
+
+          // initial calc
+          body.querySelectorAll('tr.pricing-row').forEach(recalcRow);
+        })();
+    </script>
+}

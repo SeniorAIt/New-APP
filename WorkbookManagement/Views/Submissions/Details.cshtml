@@ -1,0 +1,210 @@
+﻿@model WorkbookManagement.Models.Submission
+@using WorkbookManagement.Models
+@{
+    ViewData["Title"] = "Submission Details";
+
+    var total = Model.Workbooks?.Count ?? 0;
+    var done = Model.Workbooks?.Count(w => w.Status != SubmissionStatus.Draft) ?? 0;
+    var allCompleted = (total == 3 && done == 3);
+
+    // Allow deletion until the bundle has been submitted (or decided)
+    bool canDeleteSubmission =
+        Model.Status == SubmissionBundleStatus.Draft
+        || Model.Status == SubmissionBundleStatus.InProgress
+        || Model.Status == SubmissionBundleStatus.Completed;
+
+    // First-time submit allowed when all complete AND not already Submitted/Approved/Rejected
+    bool canSubmitFresh =
+        allCompleted &&
+        !(Model.Status == SubmissionBundleStatus.Submitted
+       || Model.Status == SubmissionBundleStatus.Approved
+       || Model.Status == SubmissionBundleStatus.Rejected);
+
+    // Resubmit allowed when Rejected AND all complete
+    bool canResubmit = allCompleted && Model.Status == SubmissionBundleStatus.Rejected;
+
+    string SubmissionBadge(SubmissionBundleStatus s) => s switch
+    {
+        SubmissionBundleStatus.InProgress => "badge bg-warning text-dark",
+        SubmissionBundleStatus.Completed => "badge bg-success",
+        SubmissionBundleStatus.Submitted => "badge bg-info",
+        SubmissionBundleStatus.Approved => "badge bg-success",
+        SubmissionBundleStatus.Rejected => "badge bg-danger",
+        _ => "badge bg-secondary"
+    };
+
+    string WorkbookBadge(SubmissionStatus s) => s switch
+    {
+        SubmissionStatus.Submitted => "badge bg-info",
+        SubmissionStatus.Approved => "badge bg-success",
+        SubmissionStatus.Completed => "badge bg-success",
+        _ => "badge bg-secondary"
+    };
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2 class="mb-0">Submission <code>@Model.Id.ToString().Substring(0, 8)</code></h2>
+
+    @if (canDeleteSubmission)
+    {
+        <form asp-controller="Submissions" asp-action="Delete" asp-route-id="@Model.Id"
+              method="post" class="d-inline"
+              onsubmit="return confirm('Delete this submission and all its workbooks? This action cannot be undone.');">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-outline-danger btn-sm" type="submit">Delete submission</button>
+        </form>
+    }
+    else
+    {
+        <button class="btn btn-outline-danger btn-sm" type="button" disabled
+                title="Submissions that have already been submitted (or decided) cannot be deleted.">
+            Delete submission
+        </button>
+    }
+</div>
+
+@if (TempData["ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="mb-3">
+    <strong>Company:</strong> @Model.Company.Name<br />
+    <strong>Status:</strong>
+    <span class="@SubmissionBadge(Model.Status)">@Model.Status</span>
+</div>
+
+@* --- Decision panels --- *@
+@if (Model.Status == SubmissionBundleStatus.Rejected)
+{
+    <!-- Current decision: Rejected (still editable; can resubmit) -->
+    <div class="alert alert-danger">
+        <div class="fw-semibold mb-1">
+            Decision:
+            <span class="badge bg-danger">Rejected</span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.DecisionNote))
+        {
+            <div class="mb-1"><span class="text-muted">Reason:</span> @Model.DecisionNote</div>
+        }
+        <div class="small text-muted">
+            @(Model.DecidedAtUtc?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")
+            @if (!string.IsNullOrWhiteSpace(Model.DecidedByUser?.Email))
+            {
+                <span> · by @Model.DecidedByUser!.Email</span>
+            }
+        </div>
+    </div>
+}
+else if (Model.HasPreviousDecision)
+{
+    <!-- Previous decision after a resubmit (status is now non-terminal like Submitted) -->
+    <div class="alert alert-secondary">
+        <div class="fw-semibold mb-1">
+            Previous decision:
+            <span class="badge @(Model.LastDecisionStatus == SubmissionBundleStatus.Approved ? "bg-success" : "bg-danger")">
+                @Model.LastDecisionStatus
+            </span>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(Model.LastDecisionNote))
+        {
+            <div class="mb-1"><span class="text-muted">Reason:</span> @Model.LastDecisionNote</div>
+        }
+        <div class="small text-muted">
+            @(Model.LastDecidedAtUtc?.ToLocalTime().ToString("yyyy/MM/dd HH:mm") ?? "—")
+            @if (!string.IsNullOrWhiteSpace(Model.LastDecidedByUser?.Email))
+            {
+                <span> · by @Model.LastDecidedByUser!.Email</span>
+            }
+        </div>
+    </div>
+}
+
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Workbook</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Updated</th>
+                <th class="text-end" style="width:180px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var w in (Model.Workbooks ?? Enumerable.Empty<WorkbookSubmission>())
+                        .OrderBy(x => x.WorkbookType))
+            {
+                <tr>
+                    <td>@w.Title</td>
+                    <td>@w.WorkbookType</td>
+                    <td><span class="@WorkbookBadge(w.Status)">@w.Status</span></td>
+                    <td>@w.UpdatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</td>
+                    <td class="text-end">
+                        <!-- Open always tries to open for edit unless bundle is Submitted (awaiting review) -->
+                        <a class="btn btn-primary btn-sm"
+                           asp-controller="Workbooks" asp-action="Open" asp-route-id="@w.Id">Open</a>
+
+                        <!-- Delete workbook (POST) — still only in draft bundles, adjust if you want parity with submission rule -->
+                        @if (Model.Status == SubmissionBundleStatus.Draft)
+                        {
+                            <form asp-controller="Workbooks" asp-action="Delete" asp-route-id="@w.Id"
+                                  method="post" class="d-inline"
+                                  onsubmit="return confirm('Delete this workbook?');">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@{
+    // pick next workbook to continue if any are still draft (null-safe)
+    var nextWb = (Model.Workbooks ?? Enumerable.Empty<WorkbookSubmission>())
+        .OrderBy(w => w.WorkbookType)
+        .FirstOrDefault(w => w.Status == SubmissionStatus.Draft);
+}
+
+<div class="d-flex gap-2">
+    <a class="btn btn-outline-secondary" asp-action="Index">Back</a>
+
+    <!-- Continue button to jump to next incomplete workbook -->
+    @if (nextWb != null)
+    {
+        <a class="btn btn-primary" asp-controller="Workbooks" asp-action="Open" asp-route-id="@nextWb.Id">Continue</a>
+    }
+    else
+    {
+        <button class="btn btn-primary" type="button" disabled>Continue</button>
+    }
+
+    <!-- Submit / Resubmit logic -->
+    @if (canSubmitFresh)
+    {
+        <form asp-action="Submit" asp-route-id="@Model.Id" method="post"
+              onsubmit="return confirm('Submit this bundle? No further edits will be allowed unless reopened.');">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-success" type="submit">Submit All</button>
+        </form>
+    }
+    else if (canResubmit)
+    {
+        <form asp-action="Resubmit" asp-route-id="@Model.Id" method="post"
+              onsubmit="return confirm('Resubmit this bundle for review?');">
+            @Html.AntiForgeryToken()
+            <button class="btn btn-success" type="submit">Resubmit</button>
+        </form>
+    }
+    else
+    {
+        <button class="btn btn-success" type="button" disabled>Submit</button>
+    }
+</div>

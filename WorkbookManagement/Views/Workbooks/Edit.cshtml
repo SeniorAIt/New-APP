@@ -1,0 +1,35 @@
+﻿@using WorkbookManagement.Models
+@model WorkbookSubmission
+@{
+    ViewData["Title"] = "Edit Workbook";
+}
+<h2>Edit Workbook</h2>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post">
+    <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Workbook Type</label>
+        <select asp-for="WorkbookType" asp-items="Html.GetEnumSelectList<WorkbookType>()" class="form-select"></select>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Data (JSON)</label>
+        <textarea asp-for="Data" rows="12" class="form-control"></textarea>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Status</label>
+        <select asp-for="Status" asp-items="Html.GetEnumSelectList<SubmissionStatus>()" class="form-select"></select>
+    </div>
+
+    <button class="btn btn-primary" type="submit">Save</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

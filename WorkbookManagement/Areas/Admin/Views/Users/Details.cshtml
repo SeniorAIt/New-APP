@@ -1,0 +1,37 @@
+﻿@model WorkbookManagement.Models.ApplicationUser
+@{
+    ViewData["Title"] = "User Details";
+}
+
+<h2 class="mb-3">User Details</h2>
+
+<div class="box p-3">
+    <dl class="row">
+        <dt class="col-sm-3">Email</dt>
+        <dd class="col-sm-9">@Model.Email</dd>
+
+        <dt class="col-sm-3">Company</dt>
+        <dd class="col-sm-9">@Model.Company?.Name</dd>
+
+        <dt class="col-sm-3">Status</dt>
+        <dd class="col-sm-9">
+            @if (Model.IsActive)
+            {
+                <span class="badge bg-success-subtle text-success border">Active</span>
+            }
+            else
+            {
+
+                <span class="badge bg-secondary-subtle text-secondary border">Suspended</span>
+            }
+        </dd>
+
+        <dt class="col-sm-3">Created</dt>
+        <dd class="col-sm-9">@Model.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")</dd>
+    </dl>
+</div>
+
+<div class="mt-3 d-flex gap-2">
+    <a class="btn btn-secondary btn-sm" asp-area="Admin" asp-controller="Users" asp-action="Index">Back</a>
+    <a class="btn btn-primary btn-sm" asp-area="Admin" asp-controller="Users" asp-action="Edit" asp-route-id="@Model.Id">Edit</a>
+</div>

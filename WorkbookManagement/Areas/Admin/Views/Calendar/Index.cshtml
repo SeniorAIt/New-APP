@@ -1,0 +1,61 @@
+﻿@model IEnumerable<WorkbookManagement.Models.CalendarEvent>
+@{
+    ViewData["Title"] = "Calendar";
+    var companies = (IEnumerable<WorkbookManagement.Models.Company>)ViewBag.Companies;
+    Guid? filterCompanyId = ViewBag.FilterCompanyId as Guid?;
+}
+<h2 class="mb-3">Calendar</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <form method="get" class="d-flex gap-2">
+        <select name="companyId" class="form-select form-select-sm" style="min-width:260px" onchange="this.form.submit()">
+            <option value="">All companies</option>
+            @foreach (var c in companies)
+            {
+                <option value="@c.Id" selected="@(filterCompanyId == c.Id ? "selected" : null)">@c.Name</option>
+            }
+        </select>
+        <noscript><button class="btn btn-sm btn-outline-primary" type="submit">Filter</button></noscript>
+    </form>
+    <a class="btn btn-primary" asp-action="Create">New Event</a>
+</div>
+
+<div class="table-responsive card shadow-sm border-0">
+    <table class="table table-sm table-hover mb-0 align-middle">
+        <thead class="table-light">
+            <tr>
+                <th>Title</th>
+                <th>When</th>
+                <th>Company</th>
+                <th>All-day</th>
+                <th>Category</th>
+                <th class="text-end">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var e in Model)
+            {
+                <tr>
+                    <td>@e.Title</td>
+                    <td>
+                        @e.StartUtc.ToLocalTime():g
+                        @if (e.EndUtc.HasValue)
+                        {
+                            <span> — @e.EndUtc.Value.ToLocalTime():g</span>
+                        }
+                    </td>
+                    <td>@(e.CompanyId.HasValue? e.Company?.Name : "Global")</td>
+                    <td>@(e.AllDay ? "Yes" : "No")</td>
+                    <td>@(string.IsNullOrWhiteSpace(e.Category) ? "-" : e.Category)</td>
+                    <td class="text-end">
+                        <a class="btn btn-sm btn-outline-secondary" asp-action="Edit" asp-route-id="@e.Id">Edit</a>
+                        <form asp-action="Delete" asp-route-id="@e.Id" method="post" class="d-inline" onsubmit="return confirm('Delete this event?');">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-sm btn-outline-danger">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

@@ -1,0 +1,124 @@
+﻿@model IEnumerable<WorkbookManagement.Models.Company>
+@{
+    ViewData["Title"] = "Companies";
+
+    // Read the query values coming from the controller
+    var q = ViewBag.Query as dynamic;
+    string search = q?.Search as string ?? string.Empty;
+    string sort = q?.Sort as string ?? string.Empty;
+    bool activeOnly = (bool?)q?.ActiveOnly == true;
+}
+
+<h2 class="mb-3">Companies</h2>
+
+@if (TempData["ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<!-- Search / Filter / Sort bar -->
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-6">
+        <input name="Search"
+               value="@search"
+               class="form-control"
+               placeholder="Search (name, email, phone) e.g. &#64;domain.com or 'Jade'" />
+    </div>
+
+    <div class="col-md-3">
+        <select name="Sort" class="form-select">
+            <option value="" selected="@(string.IsNullOrEmpty(sort))">Sort: Name ↑</option>
+            <option value="name_desc" selected="@(sort == "name_desc")">Sort: Name ↓</option>
+            <option value="created_asc" selected="@(sort == "created_asc")">Sort: Created ↑</option>
+            <option value="created_desc" selected="@(sort == "created_desc")">Sort: Created ↓</option>
+        </select>
+    </div>
+
+    <div class="col-md-2 d-flex align-items-center">
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" name="ActiveOnly" value="true" @(activeOnly ? "checked" : "") />
+            <label class="form-check-label">Active only</label>
+        </div>
+    </div>
+
+    <div class="col-md-1 d-flex gap-2">
+        <button class="btn btn-primary w-100" type="submit">Search</button>
+    </div>
+    <div class="col-md-1 d-flex gap-2">
+        <a class="btn btn-outline-secondary w-100"
+           href="@Url.Action("Index", new { area = "Admin" })">Clear</a>
+    </div>
+</form>
+
+<div class="mb-3">
+    <a class="btn btn-success btn-sm" asp-area="Admin" asp-controller="Companies" asp-action="Create">
+        New Company
+    </a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-sm align-middle">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Contact Email</th>
+                <th>Contact Phone</th>
+                <th>Active</th>
+                <th>Created</th>
+                <th class="text-end" style="width:320px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model)  @* controller already handles ordering *@
+            {
+                <tr>
+                    <td>@c.Name</td>
+                    <td>@c.ContactEmail</td>
+                    <td>@c.ContactPhone</td>
+                    <td>
+                        @if (c.IsActive)
+                        {
+                            <span class="badge bg-success-subtle text-success border">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary-subtle text-secondary border">Suspended</span>
+                        }
+                    </td>
+                    <td>@c.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")</td>
+                    <td class="text-end">
+                        <a class="btn btn-info btn-sm" asp-area="Admin" asp-controller="Companies" asp-action="Details" asp-route-id="@c.Id">View</a>
+                        <a class="btn btn-primary btn-sm" asp-area="Admin" asp-controller="Companies" asp-action="Edit" asp-route-id="@c.Id">Edit</a>
+
+                        @if (c.IsActive)
+                        {
+                            <form asp-area="Admin" asp-controller="Companies" asp-action="Suspend" asp-route-id="@c.Id"
+                                  method="post" class="d-inline"
+                                  onsubmit="return confirm('Suspend this company? Users from this company will not be able to create/edit workbooks.');">
+                                <button type="submit" class="btn btn-warning btn-sm">Suspend</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <form asp-area="Admin" asp-controller="Companies" asp-action="Activate" asp-route-id="@c.Id"
+                                  method="post" class="d-inline"
+                                  onsubmit="return confirm('Activate this company?');">
+                                <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                            </form>
+                        }
+
+                        <form asp-area="Admin" asp-controller="Companies" asp-action="Delete" asp-route-id="@c.Id"
+                              method="post" class="d-inline"
+                              onsubmit="return confirm('Delete this company? This cannot be undone.');">
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>

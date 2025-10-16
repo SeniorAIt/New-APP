@@ -1,0 +1,255 @@
+﻿@model WorkbookManagement.Models.TqaFacilitator
+@{
+    ViewData["Title"] = "Part 3: Facilitator Readiness";
+    var id = (int)ViewBag.Id;
+    var partMap = Model.Parts.ToDictionary(p => p.PartCode, p => p.Title);
+
+    // If you use the shared nav/progress:
+    // ViewData["TqaActiveStep"] = 5;
+    // ViewData["TqaTotalSteps"] = 8;
+}
+@* @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml") *@
+
+<h6 class="text-uppercase fw-bold mb-2">PART 3:- FACILITATOR READINESS</h6>
+
+<form asp-action="Step5" asp-route-id="@id" method="post" id="facilitatorReadinessForm" class="mb-5 pb-5">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@id" />
+
+    <!-- Header line fields -->
+    <div class="row g-3 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label small mb-0 text-uppercase">Training Provider:</label>
+            <input asp-for="TrainingProvider" class="form-control line-input" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label small mb-0 text-uppercase">Site:</label>
+            <input asp-for="Site" class="form-control line-input" />
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small mb-0 text-uppercase">Assessment Date:</label>
+            <input asp-for="AssessmentDate" type="date" class="form-control line-input" />
+        </div>
+    </div>
+
+    <!-- Legend / criteria blocks -->
+    <div class="row mt-3 g-3">
+        <div class="col-md-6">
+            <div class="p-2 border">
+                <div class="d-flex justify-content-between">
+                    <div><strong>CRITERIA:</strong> @Model.Criteria</div>
+                    <div class="small">
+                        <div>Compliance: <span id="compCount">0</span> &nbsp; <span id="compPct">0,0%</span></div>
+                        <div>Non-Compliance: <span id="nonCompCount">0</span> &nbsp; <span id="nonCompPct">0,0%</span></div>
+                    </div>
+                </div>
+                <div class="small text-muted">Percentages update live from CI selections (3/2; 1=N/A excluded).</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-2 border small">
+                <div><span class="badge bg-success">3</span> Compliant</div>
+                <div><span class="badge bg-danger">2</span> Not Compliant</div>
+                <div><span class="badge bg-warning text-dark">1</span> Not Applicable</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="p-2 border small">
+                CI = Compliance Indicator<br />
+                CA = Corrective Action<br />
+                CO = Close Out
+            </div>
+        </div>
+    </div>
+
+    <!-- Scrollable table area -->
+    <div class="table-wrapper mt-3">
+        <table class="table table-sm table-bordered align-middle fr-table mb-0">
+            <thead class="table-light">
+                <tr class="text-nowrap">
+                    <th style="width:6%">AREA</th>
+                    <th style="width:22%"></th>
+                    <th style="width:40%">REQ / REQUIREMENT • EVIDENCE • ACTION</th>
+                    <th class="text-center" style="width:6%">CI</th>
+                    <th style="width:20%">CORRECTIVE ACTION / IMPROVEMENT</th>
+                    <th style="width:12%">CA ASSIGNED TO</th>
+                    <th style="width:10%">CO DATE</th>
+                    <th class="text-center" style="width:5%">CO</th>
+                    <th style="width:12%">VERIFIED BY</th>
+                </tr>
+            </thead>
+            <tbody>
+                @for (int i = 0; i < Model.Rows.Count; i++)
+                {
+                    var r = Model.Rows[i];
+                    var area = partMap.TryGetValue(r.PartCode, out var t) ? t : r.PartCode;
+                    <tr>
+                        <td class="text-nowrap">
+                            @r.PartCode
+                            <input type="hidden" asp-for="Rows[i].PartCode" />
+                        </td>
+                        <td class="text-nowrap">@area</td>
+                        <td class="reqreqmt-cell">
+                            <span class="fw-semibold me-2">@r.Code</span>
+                            <span>@r.Requirement</span>
+                            <input type="hidden" asp-for="Rows[i].Code" />
+                            <input type="hidden" asp-for="Rows[i].Requirement" />
+                        </td>
+                        <td class="text-center">
+                            <div class="d-inline-flex align-items-center">
+                                <select asp-for="Rows[i].CI" class="form-select form-select-sm ci-select" style="min-width:70px;">
+                                    <option value=""></option>
+                                    <option value="3">3</option>
+                                    <option value="2">2</option>
+                                    <option value="1">1</option>
+                                </select>
+                                <i class="ci-icon ms-2" style="display:none; font-size:1.2rem;"></i>
+                            </div>
+                        </td>
+                        <td><input asp-for="Rows[i].CorrectiveAction" class="form-control form-control-sm line-input" /></td>
+                        <td><input asp-for="Rows[i].AssignedTo" class="form-control form-control-sm line-input" /></td>
+                        <td><input asp-for="Rows[i].CODate" type="date" class="form-control form-control-sm" /></td>
+                        <td class="text-center"><input asp-for="Rows[i].CO" class="form-check-input" type="checkbox" /></td>
+                        <td><input asp-for="Rows[i].VerifiedBy" class="form-control form-control-sm line-input" /></td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Spacer so table content doesn't sit under fixed save bar -->
+    <div class="save-spacer"></div>
+
+    <!-- Fixed save bar -->
+    <div class="save-bar fixed-bottom border-top bg-white">
+        <div class="container-xxl d-flex justify-content-between align-items-center py-2">
+            <div>
+                <button type="submit" name="nav" value="prev" class="btn btn-outline-secondary btn-sm">← Previous</button>
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" name="nav" value="save" class="btn btn-primary btn-sm">Save</button>
+                <button type="submit" name="nav" value="next" class="btn btn-success btn-sm">Next →</button>
+            </div>
+        </div>
+    </div>
+</form>
+
+@section Styles {
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        .line-input {
+            border: none;
+            border-bottom: 1px dotted #adb5bd !important;
+            border-radius: 0;
+            background: transparent;
+            padding-left: .25rem;
+            padding-right: .25rem;
+        }
+
+        .table-wrapper {
+            max-height: 60vh;
+            overflow-y: auto;
+            overflow-x: auto;
+            border: 1px solid #dee2e6;
+            background: #fff;
+        }
+
+            .table-wrapper thead th {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                background: #f8f9fa;
+            }
+
+        .save-bar {
+            box-shadow: 0 -4px 10px rgba(0,0,0,.05);
+            z-index: 1030;
+        }
+
+        .save-spacer {
+            height: 64px;
+        }
+
+        .line-through {
+            text-decoration: line-through;
+            text-decoration-thickness: 2px;
+            text-decoration-color: #d39e00;
+        }
+    </style>
+}
+
+@section Scripts {
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const compCountEl    = document.getElementById("compCount");
+            const compPctEl      = document.getElementById("compPct");
+            const nonCompCountEl = document.getElementById("nonCompCount");
+            const nonCompPctEl   = document.getElementById("nonCompPct");
+
+            function fmtPct(n){ return (Math.round(n*10)/10).toFixed(1).replace(".", ",") + "%"; }
+
+            function updateRowVisuals(select){
+                const row  = select.closest("tr");
+                const icon = row.querySelector(".ci-icon");
+                const cell = row.querySelector(".reqreqmt-cell");
+
+                icon.className = "ci-icon ms-2";
+                icon.style.display = "inline";
+                cell.style.color = "";
+                cell.classList.remove("line-through");
+
+                switch (select.value){
+                    case "3":
+                        icon.classList.add("bi","bi-check-circle-fill","text-success");
+                        cell.style.color = "green";
+                        break;
+                    case "2":
+                        icon.classList.add("bi","bi-x-circle-fill","text-danger");
+                        cell.style.color = "red";
+                        break;
+                    case "1":
+                        icon.classList.add("bi","bi-exclamation-circle-fill","text-warning");
+                        cell.style.color = "goldenrod";
+                        cell.classList.add("line-through");
+                        break;
+                    default:
+                        icon.style.display = "none";
+                        break;
+                }
+            }
+
+            function recalcSummary(){
+                const selects = Array.from(document.querySelectorAll(".ci-select"));
+                let compliant = 0, nonCompliant = 0, applicable = 0;
+
+                selects.forEach(s => {
+                    if (s.value === "3"){ compliant++; applicable++; }
+                    else if (s.value === "2"){ nonCompliant++; applicable++; }
+                });
+
+                if (compCountEl)     compCountEl.textContent     = String(compliant);
+                if (nonCompCountEl)  nonCompCountEl.textContent  = String(nonCompliant);
+
+                if (compPctEl && nonCompPctEl){
+                    if (applicable > 0){
+                        compPctEl.textContent    = fmtPct(compliant/applicable*100);
+                        nonCompPctEl.textContent = fmtPct(nonCompliant/applicable*100);
+                    } else {
+                        compPctEl.textContent    = "0,0%";
+                        nonCompPctEl.textContent = "0,0%";
+                    }
+                }
+            }
+
+            document.querySelectorAll(".ci-select").forEach(sel => {
+                updateRowVisuals(sel);
+                sel.addEventListener("change", function(){
+                    updateRowVisuals(sel);
+                    recalcSummary();
+                });
+            });
+
+            recalcSummary();
+        });
+    </script>
+}

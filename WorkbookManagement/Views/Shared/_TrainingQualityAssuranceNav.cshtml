@@ -1,0 +1,75 @@
+﻿@{
+    // Mode: "header" (tabs + progress) or "footer" (Prev/Save/Next)
+    var mode = (ViewData["TqaNavMode"] as string) ?? "header";
+    var active = ViewData["TqaActiveStep"] as int? ?? 1;
+    var total = ViewData["TqaTotalSteps"] as int? ?? 8;   // <-- TQA = 8 steps
+    var finishLabel = ViewData["TqaFinishLabel"] as string;
+    var readOnly = (bool?)ViewBag.ReadOnly == true;
+
+    // EXACT TQA step names
+    var tabs = new (int num, string text)[] {
+        (1, "Guide"),
+        (2, "General information"),
+        (3, "Site Readiness"),
+        (4, "Equipment Register"),
+        (5, "Facilitator Readiness"),
+        (6, "Learner Preparedness"),
+        (7, "Administration and Support Systems"),
+        (8, "Risk and Contingency Planning")
+    };
+
+    string StepAction(int step) => $"Step{step}";
+    string IsActive(int step) => step == active ? "active" : "";
+    var pct = Math.Clamp((int)Math.Round((double)active / Math.Max(1, total) * 100.0), 0, 100);
+
+    bool isFirst = active <= 1;
+    bool isLast = active >= total;
+    var nextLabel = !string.IsNullOrWhiteSpace(finishLabel) ? finishLabel : (isLast ? "Finish" : "Next");
+}
+
+@if (mode == "header")
+{
+    <div class="mb-2">
+        <ul class="nav nav-pills small">
+            @foreach (var t in tabs)
+            {
+                <li class="nav-item me-1">
+                    <a class="nav-link @IsActive(t.num)"
+                       asp-action="@StepAction(t.num)"
+                       asp-route-id="@(ViewBag.Id)">
+                        <span class="me-1">@t.num</span>@t.text
+                    </a>
+                </li>
+            }
+        </ul>
+        <div class="progress mt-1" style="height:6px;">
+            <div class="progress-bar bg-secondary" style="width:@pct%" role="progressbar"
+                 aria-valuenow="@pct" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-end gap-2 mt-3">
+        <button type="submit" class="btn btn-outline-secondary"
+                name="nav" value="prev" @(isFirst ? "disabled" : null) @(readOnly ? "disabled" : null)>
+            Previous
+        </button>
+        <button type="submit" class="btn btn-secondary"
+                name="nav" value="save" @(readOnly ? "disabled" : null)>
+            Save Draft
+        </button>
+        <button type="submit" class="btn btn-primary"
+                name="nav" value="next" @(readOnly ? "disabled" : null)>
+            @nextLabel
+        </button>
+    </div>
+}
+
+@section Styles {
+    <style>
+        .nav-pills .nav-link.active {
+            font-weight: 600;
+        }
+    </style>
+}

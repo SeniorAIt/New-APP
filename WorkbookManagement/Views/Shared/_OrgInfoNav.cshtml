@@ -1,0 +1,77 @@
+﻿@* Views/Shared/_OrgInfoNav.cshtml *@
+@{
+    // Expect ViewBag.Id set in controller actions
+    var id = ViewBag.Id as int? ?? 0;
+    var action = (ViewContext.RouteData.Values["action"]?.ToString() ?? "");
+
+    var steps = new (string Action, string Label)[]
+    {
+        ("Step1",  "Guide"),
+        ("Step2",  "Overview"),
+        ("Step3",  "Admin / Head Office"),
+        ("Step4",  "Board of Directors"),
+        ("Step5",  "Employment Stats"),
+        ("Step6",  "Campuses / Sites"),
+        ("Step7",  "Qualifications"),
+        ("Step8",  "Pricing"),
+        ("Step9",  "Student Stats (Historical)"),
+        ("Step10", "Student Stats (Current)")
+    };
+
+    int currentIndex = System.Array.FindIndex(
+        steps, s => s.Action.Equals(action, System.StringComparison.OrdinalIgnoreCase));
+    if (currentIndex < 0) currentIndex = 0;
+
+    decimal pct = (decimal)(currentIndex + 1) / steps.Length * 100m;
+}
+
+<style>
+    .org-stepper-wrap {
+        position: sticky;
+        top: 0; /* adjust if your main navbar is fixed with its own height */
+        z-index: 1010;
+        background: #fff;
+        padding-top: .5rem;
+        padding-bottom: .25rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    .org-stepper .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .35rem .6rem;
+        font-size: .95rem;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .org-stepper {
+        row-gap: .35rem; /* wraps nicely on small screens */
+    }
+</style>
+
+<div class="org-stepper-wrap mb-3">
+    <div class="container px-0">
+        <ul class="nav nav-pills flex-wrap org-stepper">
+            @for (int i = 0; i < steps.Length; i++)
+            {
+                var step = steps[i];
+                bool active = i == currentIndex;
+                <li class="nav-item me-1">
+                    <a class="nav-link @(active ? "active" : "")"
+                       asp-controller="OrgInfo"
+                       asp-action="@step.Action"
+                       asp-route-id="@id">
+                        <span class="badge rounded-pill @(active ? "text-bg-light" : "bg-light text-dark")">
+                            @(i + 1)
+                        </span>
+                        @step.Label
+                    </a>
+                </li>
+            }
+        </ul>
+
+        <div class="progress mt-2" style="height:6px;">
+            <div class="progress-bar" role="progressbar" style="width:@(pct)%"></div>
+        </div>
+    </div>
+</div>

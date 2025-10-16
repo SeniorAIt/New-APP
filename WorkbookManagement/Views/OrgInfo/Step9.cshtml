@@ -1,0 +1,365 @@
+﻿@model WorkbookManagement.Models.OrgInfoStudentHistoricalSection
+@{
+    ViewData["Title"] = "Org Info — Page 9 of 9";
+    var id = (int)ViewBag.Id;
+
+    var programmeTypeOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("", ""),
+        new("Short Course (Non Credit)","Short Course (Non Credit)"),
+        new("Short Course (Credit Bearing)","Short Course (Credit Bearing)"),
+        new("Skills Programmme","Skills Programmme"),
+        new("General Certificate","General Certificate"),
+        new("General Occupational Certificate","General Occupational Certificate"),
+        new("Elementary Certificate","Elementary Certificate"),
+        new("Elementary Occupational Certificate","Elementary Occupational Certificate"),
+        new("Intermediate Certificate","Intermediate Certificate"),
+        new("Intermediate Occupational Certificate","Intermediate Occupational Certificate"),
+        new("National Certificate","National Certificate"),
+        new("National Occupational Certificate","National Occupational Certificate"),
+        new("Higher Certificate","Higher Certificate"),
+        new("Higher Occupational Certificate","Higher Occupational Certificate"),
+        new("Advanced Occupational Certificate","Advanced Occupational Certificate"),
+        new("Occupational Diploma","Occupational Diploma"),
+        new("Diploma","Diploma"),
+        new("Advanced Certificate","Advanced Certificate"),
+        new("Advanced Occupational Diploma","Advanced Occupational Diploma"),
+        new("Advanced Diploma","Advanced Diploma"),
+        new("Specialised Occupational Diploma","Specialised Occupational Diploma"),
+        new("Bachelor's Degree","Bachelor's Degree"),
+        new("Postgraduate Diploma","Postgraduate Diploma"),
+        new("Bachelor's Honours Degree","Bachelor's Honours Degree"),
+        new("Master's Degree","Master's Degree"),
+        new("Professional Master's Degree","Professional Master's Degree"),
+        new("Doctoral Degree","Doctoral Degree"),
+        new("Professional Doctorate","Professional Doctorate")
+    };
+
+    bool canSaveProfile = ViewBag.CanSaveProfile == true;
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    .tight-table th, .tight-table td {
+        padding: .4rem .55rem;
+        vertical-align: middle;
+    }
+
+    .center {
+        text-align: center;
+    }
+
+    .nowrap {
+        white-space: nowrap;
+    }
+
+    .table-wide {
+        min-width: 2200px;
+    }
+
+    .cell {
+        min-width: 180px;
+    }
+
+    .cell-s {
+        min-width: 140px;
+    }
+
+    .cell-xs {
+        min-width: 110px;
+    }
+
+    .tight-table td {
+        white-space: normal;
+        word-break: break-word;
+    }
+</style>
+
+<div class="container mt-3">
+    <h3>PART 7: - STUDENT STATS (HISTORICAL)</h3>
+
+    <form method="post" asp-action="Step9" asp-route-id="@id">
+        @Html.AntiForgeryToken()
+
+        <!-- Period header -->
+        <div class="box">
+            <div class="row g-2 align-items-end">
+                <div class="col-sm-3">
+                    <label class="form-label">PERIOD: From</label>
+                    <input asp-for="PeriodFrom" type="date" class="form-control form-control-sm" />
+                </div>
+                <div class="col-sm-3">
+                    <label class="form-label">to</label>
+                    <input asp-for="PeriodTo" type="date" class="form-control form-control-sm" />
+                </div>
+                <div class="col-sm-2">
+                    <label class="form-label">Months</label>
+                    <input asp-for="Months" type="number" min="0" class="form-control form-control-sm" />
+                </div>
+                <div class="col-sm-4">
+                    <div class="text-muted mt-3" style="font-size:.9rem;">
+                        SC = Successful Completion • PR = Pending Re-Submission/Re-Assessment •
+                        DI = Drop-offs/Incomplete • VAR = Enrolments − (SC+PR+DI)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main grid -->
+        <div class="box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Enrolments by Programme</h6>
+                <button type="button" id="addRowBtn" class="btn btn-sm btn-outline-secondary">Add Row</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm tight-table table-wide" id="histTable">
+                    <thead>
+                        <tr>
+                            <th rowspan="2" class="align-middle">PROGRAMME TYPE</th>
+                            <th colspan="4" class="center">AFRICAN</th>
+                            <th colspan="4" class="center">COLOURED</th>
+                            <th colspan="4" class="center">INDIAN</th>
+                            <th colspan="4" class="center">WHITE</th>
+                            <th rowspan="2" class="align-middle nowrap">TOTAL</th>
+                            <th colspan="2" class="center">SC</th>
+                            <th colspan="2" class="center">PR</th>
+                            <th colspan="2" class="center">DI</th>
+                            <th rowspan="2" class="align-middle nowrap">VAR</th>
+                        </tr>
+                        <tr>
+                            <th>M</th>
+                            <th>M(D)</th>
+                            <th>F</th>
+                            <th>F(D)</th>
+                            <th>M</th>
+                            <th>M(D)</th>
+                            <th>F</th>
+                            <th>F(D)</th>
+                            <th>M</th>
+                            <th>M(D)</th>
+                            <th>F</th>
+                            <th>F(D)</th>
+                            <th>M</th>
+                            <th>M(D)</th>
+                            <th>F</th>
+                            <th>F(D)</th>
+                            <th>Count</th>
+                            <th>%</th>
+                            <th>Count</th>
+                            <th>%</th>
+                            <th>Count</th>
+                            <th>%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < (Model.Rows?.Count ?? 0); i++)
+                        {
+                            <tr class="hist-row">
+                                <td>
+                                    <select asp-for="Rows[@i].ProgrammeType" asp-items="programmeTypeOptions" class="form-select form-select-sm cell"></select>
+                                </td>
+
+                                <td><input asp-for="Rows[@i].African.M" type="number" class="form-control form-control-sm mval" /></td>
+                                <td><input asp-for="Rows[@i].African.MD" type="number" class="form-control form-control-sm" /></td>
+                                <td><input asp-for="Rows[@i].African.F" type="number" class="form-control form-control-sm fval" /></td>
+                                <td><input asp-for="Rows[@i].African.FD" type="number" class="form-control form-control-sm" /></td>
+
+                                <td><input asp-for="Rows[@i].Coloured.M" type="number" class="form-control form-control-sm mval" /></td>
+                                <td><input asp-for="Rows[@i].Coloured.MD" type="number" class="form-control form-control-sm" /></td>
+                                <td><input asp-for="Rows[@i].Coloured.F" type="number" class="form-control form-control-sm fval" /></td>
+                                <td><input asp-for="Rows[@i].Coloured.FD" type="number" class="form-control form-control-sm" /></td>
+
+                                <td><input asp-for="Rows[@i].Indian.M" type="number" class="form-control form-control-sm mval" /></td>
+                                <td><input asp-for="Rows[@i].Indian.MD" type="number" class="form-control form-control-sm" /></td>
+                                <td><input asp-for="Rows[@i].Indian.F" type="number" class="form-control form-control-sm fval" /></td>
+                                <td><input asp-for="Rows[@i].Indian.FD" type="number" class="form-control form-control-sm" /></td>
+
+                                <td><input asp-for="Rows[@i].White.M" type="number" class="form-control form-control-sm mval" /></td>
+                                <td><input asp-for="Rows[@i].White.MD" type="number" class="form-control form-control-sm" /></td>
+                                <td><input asp-for="Rows[@i].White.F" type="number" class="form-control form-control-sm fval" /></td>
+                                <td><input asp-for="Rows[@i].White.FD" type="number" class="form-control form-control-sm" /></td>
+
+                                <td><input asp-for="Rows[@i].Total" type="number" class="form-control form-control-sm total" readonly /></td>
+
+                                <td><input asp-for="Rows[@i].SC" type="number" step="1" class="form-control form-control-sm out sc" /></td>
+                                <td><input asp-for="Rows[@i].SCPercent" type="number" step="0.01" class="form-control form-control-sm scp" readonly /></td>
+
+                                <td><input asp-for="Rows[@i].PR" type="number" step="1" class="form-control form-control-sm out pr" /></td>
+                                <td><input asp-for="Rows[@i].PRPercent" type="number" step="0.01" class="form-control form-control-sm prp" readonly /></td>
+
+                                <td><input asp-for="Rows[@i].DI" type="number" step="1" class="form-control form-control-sm out di" /></td>
+                                <td><input asp-for="Rows[@i].DIPercent" type="number" step="0.01" class="form-control form-control-sm dip" readonly /></td>
+
+                                <td><input asp-for="Rows[@i].VAR" type="number" step="1" class="form-control form-control-sm var" readonly /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
+
+            @if (canSaveProfile)
+            {
+                <button class="btn btn-outline-success" name="nav" value="saveprofile" type="submit"
+                        title="Also update your Organisation Info profile for future submissions">
+                    Save Organisation Profile
+                </button>
+            }
+
+            <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+        </div>
+    </form>
+</div>
+
+<!-- Row template for Add Row -->
+<template id="row-template">
+    <tr class="hist-row">
+        <td>
+            <select name="Rows[__idx__].ProgrammeType" class="form-select form-select-sm cell">
+                <option value=""></option>
+                <option>Short Course (Non Credit)</option>
+                <option>Short Course (Credit Bearing)</option>
+                <option>Skills Programmme</option>
+                <option>General Certificate</option>
+                <option>General Occupational Certificate</option>
+                <option>Elementary Certificate</option>
+                <option>Elementary Occupational Certificate</option>
+                <option>Intermediate Certificate</option>
+                <option>Intermediate Occupational Certificate</option>
+                <option>National Certificate</option>
+                <option>National Occupational Certificate</option>
+                <option>Higher Certificate</option>
+                <option>Higher Occupational Certificate</option>
+                <option>Advanced Occupational Certificate</option>
+                <option>Occupational Diploma</option>
+                <option>Diploma</option>
+                <option>Advanced Certificate</option>
+                <option>Advanced Occupational Diploma</option>
+                <option>Advanced Diploma</option>
+                <option>Specialised Occupational Diploma</option>
+                <option>Bachelor's Degree</option>
+                <option>Postgraduate Diploma</option>
+                <option>Bachelor's Honours Degree</option>
+                <option>Master's Degree</option>
+                <option>Professional Master's Degree</option>
+                <option>Doctoral Degree</option>
+                <option>Professional Doctorate</option>
+            </select>
+        </td>
+
+        <td><input name="Rows[__idx__].African.M" type="number" class="form-control form-control-sm mval" /></td>
+        <td><input name="Rows[__idx__].African.MD" type="number" class="form-control form-control-sm" /></td>
+        <td><input name="Rows[__idx__].African.F" type="number" class="form-control form-control-sm fval" /></td>
+        <td><input name="Rows[__idx__].African.FD" type="number" class="form-control form-control-sm" /></td>
+
+        <td><input name="Rows[__idx__].Coloured.M" type="number" class="form-control form-control-sm mval" /></td>
+        <td><input name="Rows[__idx__].Coloured.MD" type="number" class="form-control form-control-sm" /></td>
+        <td><input name="Rows[__idx__].Coloured.F" type="number" class="form-control form-control-sm fval" /></td>
+        <td><input name="Rows[__idx__].Coloured.FD" type="number" class="form-control form-control-sm" /></td>
+
+        <td><input name="Rows[__idx__].Indian.M" type="number" class="form-control form-control-sm mval" /></td>
+        <td><input name="Rows[__idx__].Indian.MD" type="number" class="form-control form-control-sm" /></td>
+        <td><input name="Rows[__idx__].Indian.F" type="number" class="form-control form-control-sm fval" /></td>
+        <td><input name="Rows[__idx__].Indian.FD" type="number" class="form-control form-control-sm" /></td>
+
+        <td><input name="Rows[__idx__].White.M" type="number" class="form-control form-control-sm mval" /></td>
+        <td><input name="Rows[__idx__].White.MD" type="number" class="form-control form-control-sm" /></td>
+        <td><input name="Rows[__idx__].White.F" type="number" class="form-control form-control-sm fval" /></td>
+        <td><input name="Rows[__idx__].White.FD" type="number" class="form-control form-control-sm" /></td>
+
+        <td><input name="Rows[__idx__].Total" type="number" class="form-control form-control-sm total" readonly /></td>
+
+        <td><input name="Rows[__idx__].SC" type="number" step="1" class="form-control form-control-sm out sc" /></td>
+        <td><input name="Rows[__idx__].SCPercent" type="number" step="0.01" class="form-control form-control-sm scp" readonly /></td>
+
+        <td><input name="Rows[__idx__].PR" type="number" step="1" class="form-control form-control-sm out pr" /></td>
+        <td><input name="Rows[__idx__].PRPercent" type="number" step="0.01" class="form-control form-control-sm prp" readonly /></td>
+
+        <td><input name="Rows[__idx__].DI" type="number" step="1" class="form-control form-control-sm out di" /></td>
+        <td><input name="Rows[__idx__].DIPercent" type="number" step="0.01" class="form-control form-control-sm dip" readonly /></td>
+
+        <td><input name="Rows[__idx__].VAR" type="number" step="1" class="form-control form-control-sm var" readonly /></td>
+    </tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function(){
+          const body = document.querySelector('#histTable tbody');
+          const tpl  = document.querySelector('#row-template').innerHTML;
+          const add  = document.getElementById('addRowBtn');
+          let nextIndex = @Model.Rows?.Count ?? 0;
+
+          function num(v){ const x = parseFloat(v); return isNaN(x) ? 0 : x; }
+
+          function recalcRow(tr){
+            // TOTAL = sum of M + F across all races (do not double-count disabled here)
+            const races = ["African","Coloured","Indian","White"];
+            let total = 0;
+            for (let i=0;i<races.length;i++){
+              const r = races[i];
+              const mEl = tr.querySelector('[name*="' + r + '.M"]');
+              const fEl = tr.querySelector('[name*="' + r + '.F"]');
+              const m = mEl ? mEl.value : '0';
+              const f = fEl ? fEl.value : '0';
+              total += num(m) + num(f);
+            }
+
+            const sc = num((tr.querySelector('.sc')  || {}).value || '0');
+            const pr = num((tr.querySelector('.pr')  || {}).value || '0');
+            const di = num((tr.querySelector('.di')  || {}).value || '0');
+
+            const totalEl = tr.querySelector('.total');
+            const scpEl   = tr.querySelector('.scp');
+            const prpEl   = tr.querySelector('.prp');
+            const dipEl   = tr.querySelector('.dip');
+            const varEl   = tr.querySelector('.var');
+
+            if (totalEl) totalEl.value = total || '';
+            if (scpEl)   scpEl.value   = total > 0 ? (sc*100/total).toFixed(2) : '';
+            if (prpEl)   prpEl.value   = total > 0 ? (pr*100/total).toFixed(2) : '';
+            if (dipEl)   dipEl.value   = total > 0 ? (di*100/total).toFixed(2) : '';
+            if (varEl)   varEl.value   = (total - (sc + pr + di));
+          }
+
+          // Recalc on inputs
+          body.addEventListener('input', function(e){
+            const tr = e.target.closest('tr.hist-row');
+            if (tr) recalcRow(tr);
+          });
+
+          // Add row
+          add.addEventListener('click', function(){
+            const html = tpl.replaceAll('__idx__', String(nextIndex++));
+            const temp = document.createElement('tbody');
+            temp.innerHTML = html.trim();
+            const tr = temp.firstElementChild;
+            body.appendChild(tr);
+            recalcRow(tr);
+          });
+
+          // Initial recalc for existing rows
+          body.querySelectorAll('tr.hist-row').forEach(recalcRow);
+        })();
+    </script>
+}

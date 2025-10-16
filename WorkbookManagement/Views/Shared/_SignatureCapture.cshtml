@@ -1,0 +1,181 @@
+﻿@* /Views/Shared/_SignatureCapture.cshtml *@
+@{
+    var prefix = (string)(ViewData["SigPrefix"] ?? "sig");
+    var label = (string)(ViewData["Label"] ?? "Signature");
+    var inputName = (string)(ViewData["InputName"] ?? $"{prefix}Signature");
+    var existing = (string)(ViewData["ExistingDataUrl"] ?? "");
+    var readOnly = (bool?)(ViewData["ReadOnly"]) ?? false;
+    var signedAt = (string)(ViewData["SignedAt"] ?? "");
+    var padId = $"{prefix}SignaturePad";
+    var padWrapId = $"{prefix}-pad-container";
+    var upId = $"{prefix}SignatureFile";
+    var upWrapId = $"{prefix}-upload-container";
+    var inputId = $"{prefix}SignatureInput";
+    var clearId = $"{prefix}Clear";
+    var btnPadId = $"{prefix}-btn-pad";
+    var btnUpId = $"{prefix}-btn-upload";
+    var imgId = $"{prefix}-preview";
+}
+
+<div class="signature-section mb-4">
+    <label class="fw-bold d-block mb-1">@label</label>
+
+    @if (readOnly)
+    {
+        if (!string.IsNullOrWhiteSpace(existing))
+        {
+            <img id="@imgId" src="@existing" alt="Signature" style="max-width: 100%; height: 120px; object-fit: contain; border: 1px solid #e5e7eb; background:#fff; padding:6px; border-radius: 0.5rem;" />
+            if (!string.IsNullOrWhiteSpace(signedAt))
+            {
+                <div class="text-muted small mt-1">Signed on @signedAt</div>
+            }
+        }
+        else
+        {
+            <div class="text-muted fst-italic">No signature provided.</div>
+        }
+    }
+    else
+    {
+        <div class="d-flex flex-wrap gap-2 mb-2">
+            <button type="button" id="@btnPadId" class="btn btn-outline-primary btn-sm">Use Signature Pad</button>
+            <button type="button" id="@btnUpId" class="btn btn-outline-secondary btn-sm">Upload Image</button>
+        </div>
+
+        <!-- Signature Pad -->
+        <div id="@padWrapId" style="display:none;">
+            <div class="border rounded" style="background:#fff; width:100%; max-width:640px;">
+                <canvas id="@padId" style="width:100%; height:140px; display:block;"></canvas>
+            </div>
+            <button type="button" id="@clearId" class="btn btn-sm btn-outline-danger mt-2">Clear</button>
+        </div>
+
+        <!-- File Upload -->
+        <div id="@upWrapId" style="display:none; max-width:640px;">
+            <input type="file" id="@upId" accept="image/*" class="form-control form-control-sm" />
+            <div class="form-text">Accepted types: PNG/JPEG. We’ll resize and convert to PNG for storage.</div>
+        </div>
+
+        <!-- Hidden Base64 field -->
+        <input type="hidden" id="@inputId" name="@inputName" value="" />
+
+        @* Existing preview (if any) *@
+        @if (!string.IsNullOrWhiteSpace(existing))
+        {
+            <div class="mt-2">
+                <div class="text-muted small mb-1">Current saved signature:</div>
+                <img id="@imgId" src="@existing" alt="Current signature" style="max-width: 100%; height: 100px; object-fit: contain; border: 1px dashed #e5e7eb; background:#fafafa; padding:6px; border-radius: 0.5rem;" />
+            </div>
+        }
+    }
+</div>
+
+@if (!readOnly)
+{
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script>
+        (function () {
+            const MAX_DATA_URL_BYTES = 500000; // ~500 KB, mirror server cap
+
+            const padWrap   = document.getElementById("@padWrapId");
+            const upWrap    = document.getElementById("@upWrapId");
+            const btnPad    = document.getElementById("@btnPadId");
+            const btnUpload = document.getElementById("@btnUpId");
+            const input     = document.getElementById("@inputId");
+            const clearBtn  = document.getElementById("@clearId");
+            const fileInput = document.getElementById("@upId");
+            const canvas    = document.getElementById("@padId");
+
+            // Responsive canvas sizing (kept modest to avoid huge exports)
+            function resizeCanvasToContainer(c) {
+                const parentWidth = c.parentElement.clientWidth;
+                c.width  = parentWidth - 2;
+                c.height = 140;
+                // Use CSS size == pixel size to avoid high-DPR massive exports
+                const ctx = c.getContext('2d');
+                ctx.scale(1, 1);
+            }
+
+            let sigPad = null;
+            function ensurePad() {
+                if (!sigPad) {
+                    resizeCanvasToContainer(canvas);
+                    sigPad = new SignaturePad(canvas, { minWidth: 0.7, maxWidth: 2.0, throttle: 16, backgroundColor: '#ffffff' });
+                    window.addEventListener('resize', () => {
+                        const data = sigPad.toData();
+                        resizeCanvasToContainer(canvas);
+                        sigPad.clear();
+                        sigPad.fromData(data);
+                    });
+                }
+            }
+
+            // Toggle: Signature Pad
+            btnPad?.addEventListener('click', function () {
+                padWrap.style.display = 'block';
+                upWrap.style.display  = 'none';
+                ensurePad();
+            });
+
+            // Toggle: Upload
+            btnUpload?.addEventListener('click', function () {
+                upWrap.style.display  = 'block';
+                padWrap.style.display = 'none';
+            });
+
+            // Clear canvas
+            clearBtn?.addEventListener('click', function () {
+                if (sigPad) sigPad.clear();
+                input.value = '';
+            });
+
+            // File upload -> resize -> base64 (PNG)
+            fileInput?.addEventListener('change', function (e) {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+
+                const img = new Image();
+                img.onload = function () {
+                    const MAX_W = 640, MAX_H = 160;
+                    let w = img.naturalWidth, h = img.naturalHeight;
+                    const ratio = Math.min(MAX_W / w, MAX_H / h, 1); // never upscale
+                    w = Math.round(w * ratio); h = Math.round(h * ratio);
+
+                    const off = document.createElement('canvas');
+                    off.width = w; off.height = h;
+                    const ctx = off.getContext('2d');
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+
+                    const dataUrl = off.toDataURL('image/png'); // compact PNG
+                    if (dataUrl.length > MAX_DATA_URL_BYTES) {
+                        alert('The selected signature image is too large after resizing. Please choose a smaller image.');
+                        return;
+                    }
+                    input.value = dataUrl;
+                };
+                img.onerror = function () {
+                    alert('Could not read the selected image file.');
+                };
+
+                const reader = new FileReader();
+                reader.onload = () => { img.src = reader.result; };
+                reader.readAsDataURL(file);
+            });
+
+            // On form submit, if pad used and not empty, serialize to Base64
+            const form = canvas?.closest('form') || fileInput?.closest('form');
+            form?.addEventListener('submit', function (evt) {
+                if (sigPad && !sigPad.isEmpty()) {
+                    const dataUrl = sigPad.toDataURL('image/png');
+                    if (dataUrl.length > MAX_DATA_URL_BYTES) {
+                        evt.preventDefault();
+                        alert('Signature is too large. Please clear and sign with lighter strokes.');
+                        return;
+                    }
+                    input.value = dataUrl;
+                }
+            });
+        })();
+    </script>
+}

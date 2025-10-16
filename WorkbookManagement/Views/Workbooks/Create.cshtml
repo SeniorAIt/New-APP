@@ -1,0 +1,123 @@
+﻿@using WorkbookManagement.Models
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.AspNetCore.Mvc.Rendering
+@inject UserManager<ApplicationUser> UserManager
+
+@model WorkbookSubmission
+@{
+    ViewData["Title"] = "Create Workbook";
+
+    var me = await UserManager.GetUserAsync(User);
+    var isSuper = me != null && await UserManager.IsInRoleAsync(me, "SuperAdmin");
+    var companies = ViewBag.Companies as IEnumerable<Company>;
+}
+
+<h2>Create Workbook</h2>
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    @* Company selection (SuperAdmin only) *@
+    @if (isSuper)
+    {
+        <div class="mb-3">
+            <label class="form-label">Company</label>
+            <select asp-for="CompanyId"
+                    class="form-select"
+                    asp-items="@(new SelectList(companies ?? Enumerable.Empty<Company>(), nameof(Company.Id), nameof(Company.Name)))">
+                <option value="">-- Select company --</option>
+            </select>
+            <span asp-validation-for="CompanyId" class="text-danger"></span>
+        </div>
+    }
+    else
+    {
+        <input type="hidden" asp-for="CompanyId" value="@me?.CompanyId" />
+    }
+
+    <div class="mb-3">
+        <label class="form-label">Title</label>
+        <input asp-for="Title" class="form-control" />
+        <span asp-validation-for="Title" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Workbook Type</label>
+        <select asp-for="WorkbookType"
+                asp-items="Html.GetEnumSelectList<WorkbookType>()"
+                class="form-select" id="wbType"></select>
+        <span asp-validation-for="WorkbookType" class="text-danger"></span>
+    </div>
+
+    @* ---- Workbook 1 typed fields (bind to parameter "w1") ---- *@
+    <fieldset id="wb1-fields" class="mb-4" style="display:none">
+        <legend>Workbook 1 — Organisation Overview</legend>
+
+        <div class="mb-3">
+            <label class="form-label">Institution Name</label>
+            <input name="w1.InstitutionName" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Institution Type</label>
+            <input name="w1.InstitutionType" class="form-control" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Registration Number</label>
+            <input name="w1.RegistrationNumber" class="form-control" />
+        </div>
+
+        <h6>Contact Details</h6>
+        <div class="mb-3">
+            <label class="form-label">Address</label>
+            <input name="w1.ContactAddress" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Phone</label>
+            <input name="w1.ContactPhone" class="form-control" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input name="w1.ContactEmail" type="email" class="form-control" />
+        </div>
+    </fieldset>
+
+    @* Fallback JSON for Workbook 2/3 (we'll replace these in next steps) *@
+    <div id="json-fields" class="mb-3">
+        <label class="form-label">Data (JSON)</label>
+        <textarea asp-for="Data" rows="10" class="form-control" placeholder='{"field":"value"}'></textarea>
+        <span asp-validation-for="Data" class="text-danger"></span>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Status</label>
+        <select asp-for="Status"
+                asp-items="Html.GetEnumSelectList<SubmissionStatus>()"
+                class="form-select"></select>
+        <span asp-validation-for="Status" class="text-danger"></span>
+    </div>
+
+    <button class="btn btn-success" type="submit">Save</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function () {
+            const sel = document.getElementById('wbType');
+            const w1 = document.getElementById('wb1-fields');
+            const json = document.getElementById('json-fields');
+
+            function toggle() {
+                const v = sel.value;
+                // Enum values use names by default: "Workbook1", "Workbook2", "Workbook3"
+                const isW1 = v === 'Workbook1';
+                w1.style.display = isW1 ? '' : 'none';
+                json.style.display = isW1 ? 'none' : '';
+            }
+            sel.addEventListener('change', toggle);
+            toggle();
+        })();
+    </script>
+}

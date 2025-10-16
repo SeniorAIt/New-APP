@@ -1,0 +1,48 @@
+﻿@using WorkbookManagement.Models
+@{
+    ViewData["Title"] = "Create User";
+    var companies = (IEnumerable<Company>)(ViewBag.Companies ?? Enumerable.Empty<Company>());
+}
+<h2>Create User</h2>
+
+<form method="post">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input name="Email" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <input name="Password" type="password" class="form-control" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Confirm Password</label>
+        <input name="ConfirmPassword" type="password" class="form-control" />
+    </div>
+
+    <div class="form-check mb-3">
+        <input class="form-check-input" type="checkbox" name="IsSuperAdmin" id="IsSuperAdmin" />
+        <label class="form-check-label" for="IsSuperAdmin">Make SuperAdmin</label>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Company</label>
+        <select name="CompanyId" class="form-select">
+            <option value="">-- Select company --</option>
+            @foreach (var c in companies)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        </select>
+        <div class="form-text">Required unless creating a SuperAdmin.</div>
+    </div>
+
+    <button class="btn btn-success" type="submit">Create</button>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

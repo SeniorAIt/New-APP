@@ -1,0 +1,285 @@
+﻿@model WorkbookManagement.Models.OrgInfoData
+@{
+    ViewData["Title"] = "Org Info — Overview (Page 2 of 8)";
+    var id = (int)ViewBag.Id;
+    string Show(object? v) => v == null || (v is string s && string.IsNullOrWhiteSpace(s)) ? "—" : v.ToString()!;
+    string YesNo(bool v) => v ? "Yes" : "No";
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 6px;
+        padding: 14px;
+        margin-bottom: 14px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    .label-sm {
+        font-weight: 600;
+        font-size: .9rem;
+    }
+
+    .tight-table th, .tight-table td {
+        padding: .25rem .4rem;
+        vertical-align: middle;
+    }
+
+    .dotted {
+        border-style: dotted;
+    }
+
+    .muted {
+        color: #6c757d;
+    }
+</style>
+
+<div class="container mt-3">
+    <h3>OVERVIEW</h3>
+
+    <!-- Top line (from Section1) -->
+    <div class="box">
+        <div class="row g-2">
+            <div class="col-md-2">
+                <label class="label-sm">BBBEE LEVEL</label>
+                <div class="form-control form-control-sm dotted">@Show(Model.Section1.BBBEELevel)</div>
+            </div>
+            <div class="col-md-3">
+                <label class="label-sm">BOARD OF DIRECTORS</label>
+                <div class="form-control form-control-sm dotted">@Show(Model.Section1.BoardOfDirectors)</div>
+            </div>
+            <div class="col-md-2">
+                <label class="label-sm">YEARS REG/ACCREDITED</label>
+                <div class="form-control form-control-sm dotted">@Show(Model.Section1.YearsRegAccredited)</div>
+            </div>
+            <div class="col-md-2">
+                <label class="label-sm">CAMPUSES/SITES</label>
+                <div class="form-control form-control-sm dotted">@Show(Model.Section1.CampusesSites)</div>
+            </div>
+            <div class="col-md-3">
+                <label class="label-sm">TYPE OF INSTITUTION</label>
+                <div class="form-control form-control-sm dotted">@Show(Model.Section1.TypeOfInstitution)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Qualifications / Reg Status / Provinces -->
+        <div class="col-lg-5">
+            <div class="box">
+                <h6>Qualifications/Programmes/Courses</h6>
+                <table class="table table-sm tight-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th class="text-center" style="width:60px">O</th>
+                            <th class="text-center" style="width:90px">QTY</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @if (Model.Section3.Qualifications?.Any() == true)
+                        {
+                            foreach (var q in Model.Section3.Qualifications)
+                            {
+                                <tr>
+                                    <td>@q.Name</td>
+                                    <td class="text-center">@YesNo(q.Offered)</td>
+                                    <td class="text-center">@Show(q.Quantity)</td>
+                                </tr>
+                            }
+                        }
+                        else
+                        {
+                            <tr><td colspan="3" class="muted">No data captured.</td></tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="box">
+                        <h6>REG/ACCREDITATION STATUS</h6>
+                        <table class="table table-sm tight-table">
+                            <tbody>
+                                @if (Model.Section3.RegistrationStatuses?.Any() == true)
+                                {
+                                    foreach (var r in Model.Section3.RegistrationStatuses)
+                                    {
+                                        <tr>
+                                            <td>@r.Name</td>
+                                            <td style="width:90px" class="text-end">@Show(r.Count)</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr><td class="muted">No data captured.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="box">
+                        <h6>Active Provinces</h6>
+                        <table class="table table-sm tight-table">
+                            <tbody>
+                                @if (Model.Section3.ActiveProvinces?.Any() == true)
+                                {
+                                    foreach (var p in Model.Section3.ActiveProvinces)
+                                    {
+                                        <tr>
+                                            <td>@p.Name</td>
+                                            <td style="width:90px" class="text-end">@Show(p.Count)</td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr><td class="muted">No data captured.</td></tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modes + Historical -->
+        <div class="col-lg-3">
+            <div class="box">
+                <h6>Mode of Delivery</h6>
+                <div>Full-Time (In Person): <strong>@YesNo(Model.Section4.FullTimeInPerson)</strong></div>
+                <div>Part-Time (In Person): <strong>@YesNo(Model.Section4.PartTimeInPerson)</strong></div>
+                <div>Distance Learning: <strong>@YesNo(Model.Section4.DistanceLearning)</strong></div>
+                <div>Blended Learning: <strong>@YesNo(Model.Section4.BlendedLearning)</strong></div>
+                <div>Online/eLearning: <strong>@YesNo(Model.Section4.OnlineELearning)</strong></div>
+                <div>Workplace Based: <strong>@YesNo(Model.Section4.WorkplaceBased)</strong></div>
+                <div>Other: <strong>@YesNo(Model.Section4.Other)</strong> <span class="muted">@Show(Model.Section4.OtherText)</span></div>
+            </div>
+
+            <div class="box">
+                <h6>Student Stats (Historical)</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-5">
+                        <label class="label-sm">From</label>
+                        <div class="form-control form-control-sm dotted">@Show(Model.Section5.PeriodFrom?.ToString("yyyy-MM-dd"))</div>
+                    </div>
+                    <div class="col-5">
+                        <label class="label-sm">To</label>
+                        <div class="form-control form-control-sm dotted">@Show(Model.Section5.PeriodTo?.ToString("yyyy-MM-dd"))</div>
+                    </div>
+                    <div class="col-2">
+                        <label class="label-sm">Months</label>
+                        <div class="form-control form-control-sm dotted text-end">@Show(Model.Section5.Months)</div>
+                    </div>
+                </div>
+                <table class="table table-sm tight-table">
+                    <tbody>
+                        <tr><td>Enrolled</td><td class="text-end">@Show(Model.Section5.Enrolled)</td></tr>
+                        <tr><td>Male</td><td class="text-end">@Show(Model.Section5.Male)</td></tr>
+                        <tr><td>Female</td><td class="text-end">@Show(Model.Section5.Female)</td></tr>
+                        <tr><td>Disabled</td><td class="text-end">@Show(Model.Section5.Disabled)</td></tr>
+                        <tr><td>Successful Completion</td><td class="text-end">@Show(Model.Section5.SuccessfulCompletion)</td></tr>
+                        <tr><td>Re-Submission/Re-Assessment</td><td class="text-end">@Show(Model.Section5.ResubmissionReassessment)</td></tr>
+                        <tr><td>Drop-Offs/Incomplete</td><td class="text-end">@Show(Model.Section5.DropOffsIncomplete)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Employee + Current -->
+        <div class="col-lg-4">
+            <div class="box">
+                <h6>Employee Stats</h6>
+                <div class="table-responsive">
+                    <table class="table table-sm tight-table">
+                        <thead>
+                            <tr>
+                                <th>Group</th>
+                                <th>Employ</th>
+                                <th>Disabled</th>
+                                <th>(D)%</th>
+                                <th>Male</th>
+                                <th>%</th>
+                                <th>M(D)</th>
+                                <th>M(D)%</th>
+                                <th>Female</th>
+                                <th>%</th>
+                                <th>F(D)</th>
+                                <th>F(D)%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Section6.EmployeeStats?.Any() == true)
+                            {
+                                foreach (var r in Model.Section6.EmployeeStats)
+                                {
+                                    <tr>
+                                        <td>@r.Group</td>
+                                        <td class="text-end">@Show(r.Employ)</td>
+                                        <td class="text-end">@Show(r.Disabled)</td>
+                                        <td class="text-end">@Show(r.DPercent)</td>
+                                        <td class="text-end">@Show(r.Male)</td>
+                                        <td class="text-end">@Show(r.MalePercent)</td>
+                                        <td class="text-end">@Show(r.MaleDisabled)</td>
+                                        <td class="text-end">@Show(r.MaleDisabledPercent)</td>
+                                        <td class="text-end">@Show(r.Female)</td>
+                                        <td class="text-end">@Show(r.FemalePercent)</td>
+                                        <td class="text-end">@Show(r.FemaleDisabled)</td>
+                                        <td class="text-end">@Show(r.FemaleDisabledPercent)</td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr><td colspan="12" class="muted">No data captured.</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="box">
+                <h6>Student Stats (Current)</h6>
+                <div class="row g-2 mb-2">
+                    <div class="col-8">
+                        <label class="label-sm">Period</label>
+                        <div class="form-control form-control-sm dotted">@Show(Model.Section7.PeriodText)</div>
+                    </div>
+                    <div class="col-4">
+                        <label class="label-sm">Months</label>
+                        <div class="form-control form-control-sm dotted text-end">@Show(Model.Section7.Months)</div>
+                    </div>
+                </div>
+                <table class="table table-sm tight-table">
+                    <tbody>
+                        <tr><td>Enrolled</td><td class="text-end">@Show(Model.Section7.Enrolled)</td></tr>
+                        <tr><td>Male</td><td class="text-end">@Show(Model.Section7.Male)</td></tr>
+                        <tr><td>Female</td><td class="text-end">@Show(Model.Section7.Female)</td></tr>
+                        <tr><td>Disabled</td><td class="text-end">@Show(Model.Section7.Disabled)</td></tr>
+                        <tr><td>In-Process</td><td class="text-end">@Show(Model.Section7.InProcess)</td></tr>
+                        <tr><td>Successful Completion</td><td class="text-end">@Show(Model.Section7.SuccessfulCompletion)</td></tr>
+                        <tr><td>Re-Submission/Re-Assessment</td><td class="text-end">@Show(Model.Section7.ResubmissionReassessment)</td></tr>
+                        <tr><td>Drop-Offs/Incomplete</td><td class="text-end">@Show(Model.Section7.DropOffsIncomplete)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" asp-action="Step2" asp-route-id="@id" class="text-end mb-5">
+        <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
+        <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
+        <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+    </form>
+</div>

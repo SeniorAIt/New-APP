@@ -1,0 +1,151 @@
+/* APPETD Brand Theme — drop-in override for Bootstrap 5 */
+
+/* ===== Brand palette (from you) ===== */
+:root {
+    --brand-1: rgb(20,133,145); /* teal */
+    --brand-1-rgb: 20,133,145;
+    --brand-2: rgb(15,61,81); /* deep blue/green */
+    --brand-2-rgb: 15,61,81;
+    /* Map to Bootstrap CSS variables (no rebuild needed) */
+    --bs-primary: var(--brand-1);
+    --bs-primary-rgb: var(--brand-1-rgb);
+    --bs-secondary: var(--brand-2);
+    --bs-secondary-rgb: var(--brand-2-rgb);
+    /* Subtle tints used by .bg-*-subtle, badges, alerts, etc. */
+    --bs-primary-bg-subtle: color-mix(in srgb, rgb(var(--brand-1-rgb)) 12%, white);
+    --bs-primary-border-subtle: color-mix(in srgb, rgb(var(--brand-1-rgb)) 40%, white);
+    --bs-secondary-bg-subtle: color-mix(in srgb, rgb(var(--brand-2-rgb)) 12%, white);
+    --bs-secondary-border-subtle: color-mix(in srgb, rgb(var(--brand-2-rgb)) 40%, white);
+}
+
+/* ===== Global polish ===== */
+body {
+    background: #f7fafb;
+}
+
+/* Cards / boxes used across pages */
+.box {
+    border: 1px solid #d9e1e5;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    background: #fff;
+    box-shadow: 0 2px 10px rgba(0,0,0,.03);
+}
+
+    .box h6 {
+        margin: 0 0 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+    }
+
+/* Compact tables */
+.tight-table th, .tight-table td {
+    padding: .45rem .6rem;
+    vertical-align: middle;
+}
+
+/* Dotted "line-input" look we’ve used elsewhere */
+.line-input {
+    border: none;
+    border-bottom: 2px dotted #6c757d;
+    border-radius: 0;
+    background: transparent;
+}
+
+    .line-input:focus {
+        box-shadow: none;
+        border-bottom-color: var(--bs-primary);
+        background: transparent;
+    }
+
+/* ===== Navbar branding ===== */
+.navbar.appetd {
+    background: linear-gradient(90deg, rgb(var(--brand-2-rgb)) 0%, rgb(var(--brand-1-rgb)) 100%);
+}
+
+    .navbar.appetd .navbar-brand,
+    .navbar.appetd .nav-link,
+    .navbar.appetd .navbar-text {
+        color: #eaf6f7 !important;
+    }
+
+        .navbar.appetd .nav-link.active,
+        .navbar.appetd .nav-link:focus,
+        .navbar.appetd .nav-link:hover {
+            color: #ffffff !important;
+            text-decoration: underline 0.12em rgba(255,255,255,.6);
+            text-underline-offset: .2em;
+        }
+
+/* ===== Buttons & links ===== */
+.btn-primary {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+    .btn-primary:hover,
+    .btn-primary:focus {
+        background-color: color-mix(in srgb, var(--bs-primary) 85%, black);
+        border-color: color-mix(in srgb, var(--bs-primary) 85%, black);
+    }
+
+.btn-outline-primary {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+    .btn-outline-primary:hover,
+    .btn-outline-primary:focus {
+        background-color: var(--bs-primary);
+        color: #fff;
+    }
+
+/* Link coloring */
+a {
+    color: var(--bs-primary);
+}
+
+    a:hover, a:focus {
+        color: color-mix(in srgb, var(--bs-primary) 85%, black);
+    }
+
+/* Badges with subtle brand */
+.badge.bg-success-subtle.text-success.border {
+    border-color: var(--bs-primary-border-subtle) !important;
+    background-color: var(--bs-primary-bg-subtle) !important;
+    color: rgb(var(--brand-2-rgb)) !important;
+}
+
+/* ===== Home welcome card helpers ===== */
+.welcome-hero {
+    min-height: calc(100vh - 140px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.welcome-card {
+    border: 1px solid #d9e1e5;
+    border-radius: 14px;
+    background: #fff;
+    padding: 28px;
+    max-width: 920px;
+    margin: 0 auto;
+    text-align: center;
+    box-shadow: 0 10px 30px rgba(15,61,81,.08);
+}
+
+.welcome-logo {
+    max-height: 90px;
+    width: auto;
+    object-fit: contain;
+}
+
+.lead-tight {
+    font-size: 1.05rem;
+    color: #4b5563;
+}
+
+

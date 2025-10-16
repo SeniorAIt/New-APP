@@ -1,0 +1,38 @@
+﻿@{
+    ViewData["Title"] = "Org Info — Guide (Page 1 of 8)";
+    var id = (int)ViewBag.Id; // set by OrgInfoController.Step1 GET
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<h2 class="mb-3">GUIDE: ORGANISATION/INSTITUTION SPECIFIC DATA</h2>
+
+<ol class="mb-4">
+    <li>All organisations applying for the Gold Standard must complete Part 1 to 8.</li>
+    <li>All fields must be completed accurately and as far as possible.</li>
+    <li>Save the worksheet regularly while capturing data.</li>
+    <li>All data is for APPETD internal use only.</li>
+    <li>All information supplied will be managed according to POPIA and international best practice.</li>
+    <li>All information supplied by applicant will be considered Private &amp; Confidential.</li>
+    <li>All data will be securely stored &amp; access restricted.</li>
+    <li>AAPETD retains the right to verify all supplied data &amp; may request additional evidence.</li>
+    <li>Mouse over red markers in cells for additional information/instructions.</li>
+    <li>Emplyment Stats [p3]: Capture total males/females per ethnic group.</li>
+    <li>Emplyment Stats [p3]: how many males/females total are disabled (don't double count).</li>
+    <li>(p6) Record non credit bearing course duration as hours.</li>
+    <li>To add additional rows in tables [p2, p3, p5, p6] select the last cell (bottom right) and press TAB key).</li>
+    <li>[p6] links data from [p5], TAB from last cell to add additional rows.</li>
+    <li>Certain Cells in tables are auto fields (links/formulas) DO NOT ENTER ANYTHING as per message.</li>
+</ol>
+
+<form method="post" asp-action="Step1" asp-route-id="@id">
+    <div class="d-flex gap-2">
+        <button class="btn btn-secondary" name="nav" value="prev" type="submit" disabled>Previous</button>
+        <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
+        <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+    </div>
+</form>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

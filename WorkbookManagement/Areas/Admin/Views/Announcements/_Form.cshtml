@@ -1,0 +1,197 @@
+﻿@model WorkbookManagement.Models.Announcement
+@{
+    var companies = (IEnumerable<WorkbookManagement.Models.Company>)ViewBag.Companies;
+    var selectedIds = (ViewBag.SelectedCompanyIds as IEnumerable<Guid>) ?? Enumerable.Empty<Guid>();
+
+    string SizeFmt(long b)
+    {
+        string[] u = { "B", "KB", "MB", "GB", "TB" }; double s = b; int i = 0;
+        while (s >= 1024 && i < u.Length - 1) { s /= 1024; i++; }
+        return $"{s:0.#} {u[i]}";
+    }
+}
+
+<!-- Show any validation errors -->
+<div asp-validation-summary="All" class="text-danger mb-2"></div>
+
+<div class="mb-3">
+    <label class="form-label">Title</label>
+    <input asp-for="Title" class="form-control" />
+    <span asp-validation-for="Title" class="text-danger"></span>
+</div>
+
+<div class="mb-3">
+    <label class="form-label">Body</label>
+    <textarea asp-for="Body" rows="5" class="form-control"></textarea>
+    <span asp-validation-for="Body" class="text-danger"></span>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <label class="form-label d-block">Companies (optional — select none for Global)</label>
+
+        <!-- Dropdown button (looks like a normal select) -->
+        <div class="dropdown w-100">
+            <button id="companyPickerBtn"
+                    class="form-control text-start d-flex justify-content-between align-items-center"
+                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <span id="companyPickerLabel">All companies (Global)</span>
+                <span class="ms-2">▾</span>
+            </button>
+
+            <div class="dropdown-menu p-2 w-100 shadow" style="max-height: 280px; overflow: auto;">
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="companyGlobal"
+                           @(selectedIds.Any() ? null : "checked") />
+                    <label class="form-check-label fw-semibold" for="companyGlobal">
+                        All companies (Global)
+                    </label>
+                </div>
+
+                <div class="border-top my-2"></div>
+
+                @foreach (var c in companies)
+                {
+                    var isSel = selectedIds.Contains(c.Id);
+                    <div class="form-check">
+                        <input class="form-check-input company-choice"
+                               type="checkbox"
+                               value="@c.Id"
+                               id="c_@c.Id"
+                               @(isSel ? "checked" : null) />
+                        <label class="form-check-label" for="c_@c.Id">@c.Name</label>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Hidden inputs posted to the server -->
+        <div id="targetCompanyIdsInputs"></div>
+
+        <small class="text-muted d-block mt-1">
+            Choose none to send to all companies (Global). Otherwise pick one or more companies.
+        </small>
+    </div>
+
+    <div class="col-md-6">
+        <label class="form-label">Expires At (optional)</label>
+        <input asp-for="ExpiresAtUtc" type="datetime-local" class="form-control"
+               value="@(Model?.ExpiresAtUtc.HasValue == true ? Model.ExpiresAtUtc!.Value.ToString("yyyy-MM-ddTHH:mm") : "")" />
+        <small class="text-muted">Leave empty for no expiry.</small>
+        <span asp-validation-for="ExpiresAtUtc" class="text-danger"></span>
+    </div>
+</div>
+
+@if (Model?.HasAttachment == true)
+{
+    <div class="mb-3">
+        <div class="border rounded p-3 bg-light">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <div class="fw-semibold">Current attachment</div>
+                    <div class="small text-muted">
+                        @Model.AttachmentFileName
+                        @if (Model.AttachmentSizeBytes.HasValue)
+                        {
+                            <span> • @SizeFmt(Model.AttachmentSizeBytes.Value)</span>
+                        }
+                        @if (Model.AttachmentUploadedAtUtc.HasValue)
+                        {
+                            <span> • uploaded @Model.AttachmentUploadedAtUtc.Value.ToLocalTime().ToString("yyyy/MM/dd HH:mm")</span>
+                        }
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <a asp-area="Admin" asp-controller="Announcements" asp-action="Open" asp-route-id="@Model.Id"
+                       class="btn btn-sm btn-outline-primary">Open</a>
+                    <a asp-area="Admin" asp-controller="Announcements" asp-action="Download" asp-route-id="@Model.Id"
+                       class="btn btn-sm btn-outline-secondary">Download</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<div class="mb-3">
+    <label class="form-label">Attachment (optional)</label>
+    <input type="file" name="attachment" class="form-control" />
+    <small class="text-muted">Allowed: PDF, DOCX, XLSX, PPTX, PNG, JPG. Max 50 MB.</small>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            // Elements
+            const globalCb = document.getElementById('companyGlobal');
+            const choices = Array.from(document.querySelectorAll('.company-choice'));
+            const inputsContainer = document.getElementById('targetCompanyIdsInputs');
+            const label = document.getElementById('companyPickerLabel');
+
+            function syncHiddenInputs() {
+                // Clear
+                inputsContainer.innerHTML = '';
+
+                // If Global checked => no hidden inputs (means send to all)
+                if (globalCb.checked) {
+                    label.textContent = 'All companies (Global)';
+                    return;
+                }
+
+                // Collect selections
+                const selected = choices.filter(cb => cb.checked).map(cb => ({
+                    id: cb.value,
+                    name: cb.nextElementSibling ? cb.nextElementSibling.textContent.trim() : 'Company'
+                }));
+
+                // If none selected, fall back to Global
+                if (selected.length === 0) {
+                    globalCb.checked = true;
+                    label.textContent = 'All companies (Global)';
+                    return;
+                }
+
+                // Add hidden inputs for each selected id
+                for (const s of selected) {
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = 'targetCompanyIds';
+                    inp.value = s.id;
+                    inputsContainer.appendChild(inp);
+                }
+
+                // Update button label (pretty)
+                if (selected.length === 1) {
+                    label.textContent = selected[0].name;
+                } else {
+                    label.textContent = `${selected.length} companies selected`;
+                }
+            }
+
+            // Wire events
+            globalCb.addEventListener('change', () => {
+                if (globalCb.checked) {
+                    // Uncheck all companies when global is chosen
+                    choices.forEach(cb => cb.checked = false);
+                } else {
+                    // If user unchecks global without choosing any company,
+                    // we'll correct in syncHiddenInputs()
+                }
+                syncHiddenInputs();
+            });
+
+            choices.forEach(cb => {
+                cb.addEventListener('change', () => {
+                    if (cb.checked) {
+                        globalCb.checked = false; // selecting any company disables Global
+                    } else {
+                        // if none selected, sync() will revert to Global
+                    }
+                    syncHiddenInputs();
+                });
+            });
+
+            // Initial sync on load
+            syncHiddenInputs();
+        })();
+    </script>
+}

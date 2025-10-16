@@ -1,0 +1,175 @@
+﻿@model IEnumerable<WorkbookManagement.Models.ApplicationUser>
+@{
+    ViewData["Title"] = "Users";
+    var companies = ViewBag.Companies as List<WorkbookManagement.Models.Company>
+                    ?? new List<WorkbookManagement.Models.Company>();
+    string q = ViewBag.Search as string ?? "";
+    Guid? selectedCompanyId = (Guid?)ViewBag.CompanyId;
+}
+
+<h2 class="mb-3">Users</h2>
+
+@if (TempData["ok"] is string ok)
+{
+    <div class="alert alert-success">@ok</div>
+}
+@if (TempData["err"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<div class="box mb-3">
+    <form method="get" class="row g-2 align-items-end">
+        <div class="col-md-5">
+            <label class="form-label">Search (email or company)</label>
+            <input type="text" name="q" value="@q" class="form-control" placeholder="e.g. user@@example.com or 'Jade’s Auto'" />
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Company</label>
+            <select name="companyId" class="form-select">
+                <option value="">All companies</option>
+                @foreach (var c in companies)
+                {
+                    <option value="@c.Id" selected="@(selectedCompanyId.HasValue && selectedCompanyId.Value == c.Id)">
+                        @c.Name
+                    </option>
+                }
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-primary mt-4" type="submit">Search</button>
+            <a class="btn btn-outline-secondary mt-4" asp-area="Admin" asp-controller="Users" asp-action="Index">Clear</a>
+            <a class="btn btn-success ms-auto mt-4" asp-area="Admin" asp-controller="Users" asp-action="Create">New User</a>
+        </div>
+    </form>
+</div>
+
+@{
+    // group by company (null => "(No company)")
+    var groups = Model
+        .GroupBy(u => new { Id = u.CompanyId, Name = u.Company?.Name ?? "(No company)" })
+        .OrderBy(g => g.Key.Name)
+        .ToList();
+}
+
+<!-- Expand / collapse toolbar -->
+<div class="d-flex justify-content-end gap-2 mb-2">
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="expandAllCompanies">Expand all</button>
+    <button type="button" class="btn btn-sm btn-outline-secondary" id="collapseAllCompanies">Collapse all</button>
+</div>
+
+<div class="accordion" id="usersAccordion">
+    @{
+        var idx = 0;
+        foreach (var g in groups)
+        {
+            var open = (idx == 0); // first group open by default
+            var headingId = $"heading-{idx}";
+            var collapseId = $"collapse-{idx}";
+            <div class="accordion-item mb-2">
+                <h2 class="accordion-header" id="@headingId">
+                    <button class="accordion-button @(open ? "" : "collapsed") d-flex align-items-center justify-content-between"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#@collapseId"
+                            aria-expanded="@(open.ToString().ToLower())"
+                            aria-controls="@collapseId">
+                        <span>@g.Key.Name</span>
+                        <span class="badge bg-primary-subtle text-primary border ms-2">@g.Count()</span>
+                    </button>
+                </h2>
+                <div id="@collapseId" class="accordion-collapse collapse @(open ? "show" : "")" aria-labelledby="@headingId">
+                    <div class="accordion-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width:36%;">Email</th>
+                                        <th style="width:12%;">Active</th>
+                                        <th style="width:20%;">Created</th>
+                                        <th class="text-end" style="width:32%;">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var u in g.OrderBy(x => x.Email))
+                                    {
+                                        <tr>
+                                            <td>@u.Email</td>
+                                            <td>
+                                                @if (u.IsActive)
+                                                {
+                                                    <span class="badge bg-success-subtle text-success border">Active</span>
+                                                }
+                                                else
+                                                {
+
+                                                    <span class="badge bg-secondary-subtle text-secondary border">Suspended</span>
+                                                }
+                                            </td>
+                                            <td>@u.CreatedAt.ToLocalTime().ToString("yyyy/MM/dd HH:mm:ss")</td>
+                                            <td class="text-end">
+                                                <a class="btn btn-info btn-sm"
+                                                   asp-area="Admin" asp-controller="Users" asp-action="Details" asp-route-id="@u.Id">View</a>
+                                                <a class="btn btn-primary btn-sm"
+                                                   asp-area="Admin" asp-controller="Users" asp-action="Edit" asp-route-id="@u.Id">Edit</a>
+
+                                                @if (u.IsActive)
+                                                {
+                                                    <form asp-area="Admin" asp-controller="Users" asp-action="Suspend" asp-route-id="@u.Id"
+                                                          method="post" class="d-inline"
+                                                          onsubmit="return confirm('Suspend this user? They will be locked out.');">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-warning btn-sm">Suspend</button>
+                                                    </form>
+                                                }
+                                                else
+                                                {
+                                                    <form asp-area="Admin" asp-controller="Users" asp-action="Activate" asp-route-id="@u.Id"
+                                                          method="post" class="d-inline"
+                                                          onsubmit="return confirm('Activate this user?');">
+                                                        @Html.AntiForgeryToken()
+                                                        <button type="submit" class="btn btn-success btn-sm">Activate</button>
+                                                    </form>
+                                                }
+
+                                                <form asp-area="Admin" asp-controller="Users" asp-action="Delete" asp-route-id="@u.Id"
+                                                      method="post" class="d-inline"
+                                                      onsubmit="return confirm('Delete this user? This cannot be undone.');">
+                                                    @Html.AntiForgeryToken()
+                                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            idx++;
+        }
+    }
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const acc = document.getElementById('usersAccordion');
+            if (!acc) return;
+
+            const expandAllBtn = document.getElementById('expandAllCompanies');
+            const collapseAllBtn = document.getElementById('collapseAllCompanies');
+
+            function setAll(open) {
+                acc.querySelectorAll('.accordion-collapse').forEach(el => {
+                    const inst = bootstrap.Collapse.getOrCreateInstance(el, { toggle: false });
+                    open ? inst.show() : inst.hide();
+                });
+            }
+
+            expandAllBtn?.addEventListener('click', () => setAll(true));
+            collapseAllBtn?.addEventListener('click', () => setAll(false));
+        })();
+    </script>
+}

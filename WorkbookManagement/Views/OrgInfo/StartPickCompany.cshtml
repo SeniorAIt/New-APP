@@ -1,0 +1,20 @@
+﻿@using WorkbookManagement.Models
+@{
+    ViewData["Title"] = "Start Org Info";
+    var companies = (IEnumerable<Company>)(ViewBag.Companies ?? Enumerable.Empty<Company>());
+}
+<h2>Start “Organisation Information”</h2>
+
+<form method="get" asp-action="Start">
+    <div class="mb-3">
+        <label class="form-label">Company</label>
+        <select name="companyId" class="form-select" required>
+            <option value="">-- Select company --</option>
+            @foreach (var c in companies)
+            {
+                <option value="@c.Id">@c.Name</option>
+            }
+        </select>
+    </div>
+    <button class="btn btn-success" type="submit">Start</button>
+</form>

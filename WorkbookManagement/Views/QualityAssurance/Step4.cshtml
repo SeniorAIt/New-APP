@@ -1,0 +1,245 @@
+﻿@model WorkbookManagement.Models.QaInfo
+@{
+    ViewData["Title"] = "QA — Page 4 of 13 (Info)";
+    var id = (int)ViewBag.Id;
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+}
+
+@* Top step tabs *@
+@await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    /* Screenshot-style: labels above inputs, uppercase, compact */
+    .label-up {
+        display: block;
+        text-transform: uppercase;
+        font-weight: 600;
+        font-size: .85rem;
+        margin-bottom: .25rem;
+        letter-spacing: .02em;
+    }
+
+    .form-control-sm, .form-select-sm {
+        font-size: .9rem;
+    }
+</style>
+
+<div class="container mt-3">
+    <h5 class="fw-bold text-uppercase mb-3">Gold Standard Assessment — Info</h5>
+
+    <form method="post" asp-action="Step4" asp-route-id="@id">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+
+        @* Everything editable goes inside the fieldset so read-only works *@
+        <fieldset @(readOnly ? "disabled" : null)>
+
+            <!-- COMPANY DETAILS (styled like the screenshot) -->
+            <div class="box">
+                <h6>Company Details</h6>
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="label-up" for="AppetdRegNo">APPETD REG No.</label>
+                        <input asp-for="AppetdRegNo" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="TradingName">TRADING NAME</label>
+                        <input asp-for="TradingName" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="OrganisationType">TYPE OF INSTITUTION</label>
+                        <input asp-for="OrganisationType" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="SiteDepartment">SITE / DEPARTMENT</label>
+                        <input asp-for="SiteDepartment" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-8"></div>
+
+                    <div class="col-md-12">
+                        <label class="label-up" for="StreetAddress1">STREET ADDRESS 1</label>
+                        <input asp-for="StreetAddress1" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="label-up" for="StreetAddress2">STREET ADDRESS 2</label>
+                        <input asp-for="StreetAddress2" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="Town">TOWN/CITY</label>
+                        <input asp-for="Town" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="Province">PROVINCE</label>
+                        <select asp-for="Province" class="form-select form-select-sm">
+                            <option value=""></option>
+                            <option>Eastern Cape</option>
+                            <option>Free State</option>
+                            <option>Gauteng</option>
+                            <option>KwaZulu-Natal</option>
+                            <option>Limpopo</option>
+                            <option>Mpumalanga</option>
+                            <option>Northern Cape</option>
+                            <option>North West</option>
+                            <option>Western Cape</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="Suburb">LOCAL MUNICIPALITY</label>
+                        <input asp-for="Suburb" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="Zip">POST CODE</label>
+                        <input asp-for="Zip" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="ContactPerson">CONTACT PERSON</label>
+                        <input asp-for="ContactPerson" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="label-up" for="ContactNumber">CONTACT NUMBER</label>
+                        <input asp-for="ContactNumber" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="label-up" for="Email">EMAIL</label>
+                        <input asp-for="Email" class="form-control form-control-sm" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ASSESSMENT PANEL -->
+            <div class="box">
+                <h6>Assessment</h6>
+
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="label-up" for="AssessmentDate">ASSESSMENT DATE</label>
+                        <input asp-for="AssessmentDate" type="date" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="label-up" for="OrganisationInfo">ORGANISATION INFO (Completed/Verified)</label>
+                        <input asp-for="OrganisationInfo" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="label-up" for="AccreditationStatus">ACCREDITATION STATUS</label>
+                        <input asp-for="AccreditationStatus" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="label-up" for="SupportingDocsSubmitted">SUPPORTING DOCs SUBMITTED</label>
+                        <input asp-for="SupportingDocsSubmitted" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="label-up" for="CaImplementationDeadlineDays">CA IMPLEMENTATION DEADLINE (days)</label>
+                        <input asp-for="CaImplementationDeadlineDays" class="form-control form-control-sm text-center" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="label-up" for="ReassessmentDeadlineDays">RE-ASSESSMENT DEADLINE (days)</label>
+                        <input asp-for="ReassessmentDeadlineDays" class="form-control form-control-sm text-center" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="label-up" for="CaVerificationDate">CA VERIFICATION DATE</label>
+                        <input asp-for="CaVerificationDate" type="date" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="label-up" for="ReassessmentDate">RE-ASSESSMENT DATE</label>
+                        <input asp-for="ReassessmentDate" type="date" class="form-control form-control-sm" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- ASSESSOR DETAILS + SIGNATURES -->
+            <div class="box">
+                <h6>Assessor Details</h6>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="label-up" for="AssessorFullName">FULL NAME</label>
+                        <input asp-for="AssessorFullName" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="label-up" for="AssessorOrganisation">ORGANISATION</label>
+                        <input asp-for="AssessorOrganisation" class="form-control form-control-sm" />
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="label-up" for="AssessorContactNumber">CONTACT NUMBER</label>
+                        <input asp-for="AssessorContactNumber" class="form-control form-control-sm" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="label-up" for="AssessorEmail">EMAIL</label>
+                        <input asp-for="AssessorEmail" class="form-control form-control-sm" />
+                    </div>
+                </div>
+
+                <div class="row g-3 mt-2">
+                    <div class="col-md-6">
+                        @{
+                            // Organisation Representative Signature block
+                            ViewData["SigPrefix"] = "org";
+                            ViewData["Label"] = "Organisation Representative Signature";
+                            ViewData["InputName"] = "OrgRepresentativeSignature"; // posted field name
+                            ViewData["ExistingDataUrl"] = (string)(ViewBag.OrgRepresentativeSignature ?? "");
+                            ViewData["SignedAt"] = (string)(ViewBag.OrgSignedAtDisplay ?? "");
+                            ViewData["ReadOnly"] = readOnly;
+                        }
+                        @await Html.PartialAsync("~/Views/Shared/_SignatureCapture.cshtml")
+                    </div>
+
+                    <div class="col-md-6">
+                        @{
+                            // Assessor (SuperAdmin) Signature block
+                            ViewData["SigPrefix"] = "assessor";
+                            ViewData["Label"] = "Assessor Signature";
+                            ViewData["InputName"] = "AssessorSignature"; // posted field name
+                            ViewData["ExistingDataUrl"] = (string)(ViewBag.AssessorSignature ?? "");
+                            ViewData["SignedAt"] = (string)(ViewBag.AssessorSignedAtDisplay ?? "");
+                            ViewData["ReadOnly"] = readOnly;
+                        }
+                        @await Html.PartialAsync("~/Views/Shared/_SignatureCapture.cshtml")
+                    </div>
+                </div>
+            </div>
+
+        </fieldset>
+
+        @* Footer buttons from QANav *@
+        @{
+            ViewData["QaNavMode"] = "footer";
+            ViewData["QaFinishLabel"] = "Next";
+        }
+        @await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+    </form>
+</div>

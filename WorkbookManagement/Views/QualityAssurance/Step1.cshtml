@@ -1,0 +1,87 @@
+﻿@model WorkbookManagement.Models.QaOverview
+@{
+    ViewData["Title"] = "QA — Page 1 of 13 (Overview)";
+    var id = (int)ViewBag.Id;
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+}
+
+@* Top step tabs *@
+@await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+    .leadish {
+        font-size: 1.02rem;
+        line-height: 1.5;
+    }
+
+    .pill {
+        display: inline-block;
+        margin: 2px 6px 6px 0;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: #f2f4f6;
+        border: 1px solid #e3e6ea;
+        font-size: .9rem;
+    }
+</style>
+
+<div class="container mt-3">
+    <h5 class="fw-bold text-uppercase">GOLD STANDARD OVERVIEW</h5>
+
+    <div class="box leadish">
+        <p class="mb-3">
+            This framework aims to establish a gold standard for quality assurance and organisational excellence within South African training institutions.
+            It integrates principles and requirements from key national regulatory bodies (QCTO, Umalusi, CHE), governance codes (King IV, Independent Code for NPOs),
+            international quality assurance guidelines (ASG-QA, ESG), internationally recognised management system standards (ISO 21001:2018 EOMS),
+            and people management frameworks (Investors in People).
+        </p>
+        <p class="mb-0">
+            Adherence to this framework signifies a commitment to ethical governance, strategic effectiveness, high-quality teaching and learning,
+            robust learner support, staff development, efficient resource management, continuous improvement, stakeholder value and legal compliance.
+            It provides a benchmark against which institutions can be assessed for holistic quality and organisational maturity.
+        </p>
+    </div>
+
+    <div class="box">
+        <div class="mb-2 fw-semibold text-uppercase">Frameworks aligned</div>
+        <div>
+            <span class="pill">QCTO</span>
+            <span class="pill">Umalusi</span>
+            <span class="pill">CHE</span>
+            <span class="pill">King IV</span>
+            <span class="pill">Independent Code for NPOs</span>
+            <span class="pill">ASG-QA</span>
+            <span class="pill">ESG</span>
+            <span class="pill">ISO 21001:2018 (EOMS)</span>
+            <span class="pill">Investors in People</span>
+        </div>
+    </div>
+
+    <form method="post" asp-action="Step1" asp-route-id="@id">
+        @Html.AntiForgeryToken()
+
+        <fieldset @(readOnly ? "disabled" : null)>
+            @* (no inputs on this page yet) *@
+        </fieldset>
+
+        @* Footer buttons from QANav:
+           - hide Previous on Step 1
+           - show Save Draft
+           - label the submit "Next"
+        *@
+        @{
+            ViewData["QaNavMode"] = "footer";
+            ViewData["QaHidePrev"] = true;
+            ViewData["QaFinishLabel"] = "Next";
+        }
+        @await Html.PartialAsync("~/Views/Shared/_QualityAssuranceNav.cshtml")
+    </form>
+</div>

@@ -1,0 +1,261 @@
+﻿@model WorkbookManagement.Models.TqaEquipment
+@{
+    ViewData["Title"] = "Part 2: Equipment Register";
+
+    // Id + read-only from controller
+    var id = (int)(ViewBag.Id ?? 0);
+    var readOnly = (bool)(ViewBag.ReadOnly ?? false);
+
+    // Shared TQA nav/progress
+    ViewData["TqaActiveStep"] = 4;
+    ViewData["TqaTotalSteps"] = 8;
+}
+
+@* Top tabs + progress bar *@
+@await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+
+<h6 class="text-uppercase fw-bold mb-2">PART 2:- EQUIPMENT REGISTER</h6>
+
+<form asp-action="Step4" asp-route-id="@id" method="post" id="equipmentRegisterForm" class="mb-4">
+    @Html.AntiForgeryToken()
+    <input type="hidden" name="id" value="@id" />
+
+    <fieldset @(readOnly ? "disabled" : null)>
+        <div class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label class="form-label small mb-0 text-uppercase">Training Provider:</label>
+                <input asp-for="TrainingProvider" class="form-control line-input" />
+            </div>
+            <div class="col-md-6">
+                <label class="form-label small mb-0 text-uppercase">Qualification/Course Title:</label>
+                <input asp-for="QualificationTitle" class="form-control line-input" />
+            </div>
+            <div class="col-md-3 mt-2">
+                <label class="form-label small mb-0 text-uppercase">No. of Learners:</label>
+                <input asp-for="NumberOfLearners" class="form-control line-input text-center" />
+            </div>
+
+            <div class="col-md-9 mt-2">
+                <div class="p-2 border small">
+                    <div class="fw-bold mb-1">EQUIPMENT CONDITION (RATE)</div>
+                    <div class="d-flex align-items-center gap-2"><span class="sym sym-good">▲</span> <strong>3</strong>&nbsp; Good</div>
+                    <div class="d-flex align-items-center gap-2"><span class="sym sym-fair">▬</span> <strong>2</strong>&nbsp; Fair Wear &amp; Tear</div>
+                    <div class="d-flex align-items-center gap-2"><span class="sym sym-poor">▼</span> <strong>1</strong>&nbsp; Poor</div>
+                    <hr class="my-2" />
+                    <div>A = Allocation: <strong>F</strong> - Facilitator / <strong>L</strong> - Learner</div>
+                    <div>Ratio QTY = Standard Quantity</div>
+                    <div>P/P = Person/Group Allocation</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <h6 class="mb-0">Register</h6>
+            @if (!readOnly)
+            {
+                <button id="addRowBtn" type="button" class="btn btn-outline-secondary btn-sm">+ Add row</button>
+            }
+        </div>
+
+        <div class="table-wrapper mt-2">
+            <table class="table table-sm table-bordered align-middle mb-0 eq-table">
+                <thead class="table-light">
+                    <tr class="text-nowrap">
+                        <th>ITEM NAME/DESCRIPTION</th>
+                        <th>SPECIFICATION</th>
+                        <th class="text-center" style="width: 9%">A</th>
+                        <th class="text-center" style="width: 9%">RATIO QTY</th>
+                        <th class="text-center" style="width: 8%">P/P</th>
+                        <th class="text-center" style="width: 9%">QTY REQ</th>
+                        <th class="text-center" style="width: 9%">QTY AVAIL</th>
+                        <th class="text-center" style="width: 8%">VAR</th>
+                        <th class="text-center" style="width: 9%">RATE</th>
+                        <th style="width: 18%">CORRECTIVE ACTION/IMPROVEMENT</th>
+                        <th style="width: 12%">CA ASSIGNED TO</th>
+                        <th style="width: 11%">CO DATE</th>
+                        <th class="text-center" style="width: 6%">CO</th>
+                        <th style="width: 12%">VERIFIED BY</th>
+                    </tr>
+                </thead>
+                <tbody id="eq-body">
+                    @for (int i = 0; i < Model.Rows.Count; i++)
+                    {
+                        <tr>
+                            <td class="equip-cell">
+                                <input asp-for="Rows[i].Item" class="form-control form-control-sm" />
+                            </td>
+                            <td><input asp-for="Rows[i].Specification" class="form-control form-control-sm" /></td>
+                            <td class="text-center">
+                                <select asp-for="Rows[i].Allocation" class="form-select form-select-sm" style="min-width: 80px;">
+                                    <option value=""></option>
+                                    <option value="F">F</option>
+                                    <option value="L">L</option>
+                                </select>
+                            </td>
+                            <td class="text-center"><input asp-for="Rows[i].RatioQty" class="form-control form-control-sm text-center" /></td>
+                            <td class="text-center"><input asp-for="Rows[i].PP" class="form-control form-control-sm text-center" /></td>
+                            <td class="text-center"><input asp-for="Rows[i].QtyReq" type="number" class="form-control form-control-sm text-center qty-req" /></td>
+                            <td class="text-center"><input asp-for="Rows[i].QtyAvail" type="number" class="form-control form-control-sm text-center qty-avail" /></td>
+                            <td class="text-center"><input asp-for="Rows[i].Variance" type="number" class="form-control form-control-sm text-center qty-var" /></td>
+                            <td class="text-center">
+                                <div class="d-inline-flex align-items-center">
+                                    <select asp-for="Rows[i].Rate" class="form-select form-select-sm rate-select" style="min-width:70px;">
+                                        <option value=""></option>
+                                        <option value="3">3</option>
+                                        <option value="2">2</option>
+                                        <option value="1">1</option>
+                                    </select>
+                                    <span class="rate-symbol ms-2" style="display:none; font-weight:700;"></span>
+                                </div>
+                            </td>
+                            <td><input asp-for="Rows[i].CorrectiveAction" class="form-control form-control-sm line-input" /></td>
+                            <td><input asp-for="Rows[i].AssignedTo" class="form-control form-control-sm line-input" /></td>
+                            <td><input asp-for="Rows[i].CODate" type="date" class="form-control form-control-sm" /></td>
+                            <td class="text-center"><input asp-for="Rows[i].CO" type="checkbox" class="form-check-input" /></td>
+                            <td><input asp-for="Rows[i].VerifiedBy" class="form-control form-control-sm line-input" /></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
+
+    @* Footer buttons via shared nav (Prev / Save Draft / Next) *@
+    @{
+        ViewData["TqaNavMode"] = "footer";
+        // Active/Total already set above; footer will render standard middle-step actions.
+    }
+    @await Html.PartialAsync("~/Views/Shared/_TrainingQualityAssuranceNav.cshtml")
+</form>
+
+@section Styles {
+    <style>
+        .line-input {
+            border: none;
+            border-bottom: 1px dotted #adb5bd !important;
+            border-radius: 0;
+            padding-left: .25rem;
+            padding-right: .25rem;
+            background: transparent;
+        }
+
+        .table-wrapper {
+            max-height: 60vh;
+            overflow: auto;
+            border: 1px solid #dee2e6;
+            background: #fff;
+        }
+
+            .table-wrapper thead th {
+                position: sticky;
+                top: 0;
+                z-index: 2;
+                background: #f8f9fa;
+            }
+
+        .sym {
+            display: inline-block;
+            width: 1.1rem;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .sym-good {
+            color: #198754;
+        }
+        /* ▲ */
+        .sym-fair {
+            color: #d39e00;
+        }
+        /* ▬ */
+        .sym-poor {
+            color: #dc3545;
+        }
+        /* ▼ */
+    </style>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            const body = document.getElementById('eq-body');
+
+            // Triangles / colour on RATE
+            function updateRateVisuals(select) {
+                const row = select.closest('tr');
+                const symbol = row.querySelector('.rate-symbol');
+                const equipCell = row.querySelector('.equip-cell');
+
+                symbol.style.display = 'inline';
+                symbol.textContent = '';
+                symbol.style.color = '';
+                equipCell.style.color = '';
+
+                switch (select.value) {
+                    case '3': symbol.textContent = '▲'; symbol.style.color = '#198754'; equipCell.style.color = '#198754'; break;
+                    case '2': symbol.textContent = '▬'; symbol.style.color = '#d39e00'; equipCell.style.color = '#d39e00'; break;
+                    case '1': symbol.textContent = '▼'; symbol.style.color = '#dc3545'; equipCell.style.color = '#dc3545'; break;
+                    default:  symbol.style.display = 'none'; break;
+                }
+            }
+
+            // Auto-calc Variance (Avail - Req)
+            function recalcVariance(row) {
+                const req = row.querySelector('.qty-req');
+                const avail = row.querySelector('.qty-avail');
+                const diff = row.querySelector('.qty-var');
+                if (!req || !avail || !diff) return;
+                const r = parseInt(req.value || '0', 10);
+                const a = parseInt(avail.value || '0', 10);
+                diff.value = (a - r);
+            }
+
+            // Initialize existing
+            document.querySelectorAll('.rate-select').forEach(updateRateVisuals);
+            document.querySelectorAll('#eq-body tr').forEach(recalcVariance);
+
+            body.addEventListener('change', function (e) {
+                const t = e.target;
+                if (t.matches('.rate-select')) updateRateVisuals(t);
+                if (t.matches('.qty-req, .qty-avail')) recalcVariance(t.closest('tr'));
+            });
+
+            // Add row button (only active when not read-only)
+            const addBtn = document.getElementById('addRowBtn');
+            if (addBtn) {
+                addBtn.addEventListener('click', () => {
+                    const i = body.querySelectorAll('tr').length;
+                    const html = `
+        <tr>
+          <td class="equip-cell"><input name="Rows[${i}].Item" class="form-control form-control-sm" /></td>
+          <td><input name="Rows[${i}].Specification" class="form-control form-control-sm" /></td>
+          <td class="text-center">
+            <select name="Rows[${i}].Allocation" class="form-select form-select-sm" style="min-width:80px;">
+              <option value=""></option><option value="F">F</option><option value="L">L</option>
+            </select>
+          </td>
+          <td class="text-center"><input name="Rows[${i}].RatioQty" class="form-control form-control-sm text-center" /></td>
+          <td class="text-center"><input name="Rows[${i}].PP" class="form-control form-control-sm text-center" /></td>
+          <td class="text-center"><input name="Rows[${i}].QtyReq" type="number" class="form-control form-control-sm text-center qty-req" /></td>
+          <td class="text-center"><input name="Rows[${i}].QtyAvail" type="number" class="form-control form-control-sm text-center qty-avail" /></td>
+          <td class="text-center"><input name="Rows[${i}].Variance" type="number" class="form-control form-control-sm text-center qty-var" /></td>
+          <td class="text-center">
+            <div class="d-inline-flex align-items-center">
+              <select name="Rows[${i}].Rate" class="form-select form-select-sm rate-select" style="min-width:70px;">
+                <option value=""></option><option value="3">3</option><option value="2">2</option><option value="1">1</option>
+              </select>
+              <span class="rate-symbol ms-2" style="display:none; font-weight:700;"></span>
+            </div>
+          </td>
+          <td><input name="Rows[${i}].CorrectiveAction" class="form-control form-control-sm line-input" /></td>
+          <td><input name="Rows[${i}].AssignedTo" class="form-control form-control-sm line-input" /></td>
+          <td><input name="Rows[${i}].CODate" type="date" class="form-control form-control-sm" /></td>
+          <td class="text-center"><input name="Rows[${i}].CO" type="checkbox" class="form-check-input" /></td>
+          <td><input name="Rows[${i}].VerifiedBy" class="form-control form-control-sm line-input" /></td>
+        </tr>`;
+                    body.insertAdjacentHTML('beforeend', html);
+                });
+            }
+        })();
+    </script>
+}

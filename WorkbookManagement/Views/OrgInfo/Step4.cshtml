@@ -1,0 +1,286 @@
+﻿@model WorkbookManagement.Models.OrgInfoBoardSection
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Org Info — Page 4 of 8";
+
+    // Dropdown data
+    var titleItems = new List<SelectListItem> {
+        new("Mr", "Mr"), new("Mrs", "Mrs"), new("Ms", "Ms"),
+        new("Dr", "Dr"), new("Prof", "Prof"), new("Rev", "Rev")
+    };
+    var designationItems = new List<SelectListItem> {
+        new("Chairperson","Chairperson"), new("Vice-Chairperson","Vice-Chairperson"),
+        new("Secretary","Secretary"), new("Treasurer","Treasurer"),
+        new("General Member","General Member"), new("Director","Director"),
+        new("CEO","CEO")
+    };
+    var genderItems = new List<SelectListItem> { new("Male", "Male"), new("Female", "Female") };
+    var ethnicItems = new List<SelectListItem> {
+        new("African","African"), new("Asian","Asian"), new("Coloured","Coloured"),
+        new("Indian","Indian"), new("White","White"), new("Other","Other")
+    };
+    // For bools (select Yes/No). Values must be "true"/"false" for model binding.
+    var yesNoItems = new List<SelectListItem> { new("Yes", "true"), new("No", "false") };
+
+    var rows = Model.Directors ?? new List<WorkbookManagement.Models.DirectorRow>();
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 6px;
+        padding: 14px;
+        margin-bottom: 14px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    /* Wider, readable table with horizontal scroll when needed */
+    .table-directors {
+        min-width: 1900px;
+    }
+
+        .table-directors th, .table-directors td {
+            padding: .4rem .5rem;
+            vertical-align: middle;
+            white-space: nowrap;
+        }
+
+    /* Helpful width utilities */
+    .w-120 {
+        width: 120px;
+    }
+
+    .w-140 {
+        width: 140px;
+    }
+
+    .w-160 {
+        width: 160px;
+    }
+
+    .w-180 {
+        width: 180px;
+    }
+
+    .w-200 {
+        width: 200px;
+    }
+
+    /* Make the selects/inputs consistent */
+    .table-directors .form-control-sm,
+    .table-directors .form-select-sm {
+        min-width: 110px;
+    }
+</style>
+
+<div class="container mt-3">
+    <h3>PART 2: - BOARD OF DIRECTORS</h3>
+
+    <form method="post" novalidate>
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="box">
+            <div class="d-flex align-items-center gap-3">
+                <div class="fw-bold">Total</div>
+                <input asp-for="TotalDirectors" type="number" min="0" class="form-control form-control-sm w-120" />
+            </div>
+        </div>
+
+        <div class="box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Directors</h6>
+                <div>
+                    <button type="button" id="addRowBtn" class="btn btn-sm btn-outline-secondary">Add Row</button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-directors" id="directorsTable">
+                    <thead>
+                        <tr>
+                            <th class="w-160">SURNAME</th>
+                            <th class="w-160">FIRST NAME</th>
+                            <th class="w-160">SECOND NAME</th>
+                            <th class="w-120">TITLE</th>
+                            <th class="w-160">REFERENCE</th>
+                            <th class="w-140">APPOINTED</th>
+                            <th class="w-180">DESIGNATION</th>
+                            <th class="w-120">GENDER</th>
+                            <th class="w-140">ETHNIC</th>
+                            <th class="w-140">DISABILITY</th>
+                            <th class="w-180">GOV SEC INTEREST</th>
+                            <th class="w-200">PREV EMPLOY BY GOV</th>
+                            <th class="w-180">CLEAR CREDIT SCORE</th>
+                            <th class="w-200">CLEAR CRIMINAL RECORD</th>
+                            <th class="w-180">VALID QUALIFICATIONS</th>
+                            <th class="w-200">SUSPENSION FROM CSD</th>
+                            <th class="w-240">JUDGEMENTS ISSUED BY COURT</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < rows.Count; i++)
+                        {
+                            <tr>
+                                <td><input asp-for="Directors[@i].Surname" class="form-control form-control-sm" /></td>
+                                <td><input asp-for="Directors[@i].FirstName" class="form-control form-control-sm" /></td>
+                                <td><input asp-for="Directors[@i].SecondName" class="form-control form-control-sm" /></td>
+
+                                <td>
+                                    <select asp-for="Directors[@i].Title" asp-items="titleItems" class="form-select form-select-sm"></select>
+                                </td>
+
+                                <td><input asp-for="Directors[@i].Reference" class="form-control form-control-sm" /></td>
+                                <td><input asp-for="Directors[@i].Appointed" type="date" class="form-control form-control-sm" /></td>
+
+                                <td>
+                                    <select asp-for="Directors[@i].Designation" asp-items="designationItems" class="form-select form-select-sm"></select>
+                                </td>
+
+                                <td>
+                                    <select asp-for="Directors[@i].Gender" asp-items="genderItems" class="form-select form-select-sm"></select>
+                                </td>
+
+                                <td>
+                                    <select asp-for="Directors[@i].Ethnic" asp-items="ethnicItems" class="form-select form-select-sm"></select>
+                                </td>
+
+                                <td><select asp-for="Directors[@i].Disability" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <td><select asp-for="Directors[@i].GovSecInterest" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <td><select asp-for="Directors[@i].PrevEmployByGov" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <td><select asp-for="Directors[@i].ClearCreditScore" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <td><select asp-for="Directors[@i].ClearCriminalRecord" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <td><select asp-for="Directors[@i].ValidQualifications" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <td><select asp-for="Directors[@i].SuspensionFromCsd" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+                                <td><select asp-for="Directors[@i].JudgementsIssuedByCourt" asp-items="yesNoItems" class="form-select form-select-sm"></select></td>
+
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
+
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save</button>
+
+            @* Only show this when editing the Organisation Profile (no SubmissionId) *@
+            @if (ViewBag.CanSaveProfile == true)
+            {
+                <button class="btn btn-success" name="nav" value="save" type="submit"
+                        title="Save these details to your Organisation profile for future submissions">
+                    Save Organisation Profile
+                </button>
+            }
+
+            <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+        </div>
+    </form>
+</div>
+
+<!-- Template for client-side "Add Row" -->
+<template id="row-template">
+    <tr>
+        <td><input name="Directors[__idx__].Surname" class="form-control form-control-sm" /></td>
+        <td><input name="Directors[__idx__].FirstName" class="form-control form-control-sm" /></td>
+        <td><input name="Directors[__idx__].SecondName" class="form-control form-control-sm" /></td>
+
+        <td>
+            <select name="Directors[__idx__].Title" class="form-select form-select-sm">
+                <option value="Mr">Mr</option>
+                <option value="Mrs">Mrs</option>
+                <option value="Ms">Ms</option>
+                <option value="Dr">Dr</option>
+                <option value="Prof">Prof</option>
+                <option value="Rev">Rev</option>
+            </select>
+        </td>
+
+        <td><input name="Directors[__idx__].Reference" class="form-control form-control-sm" /></td>
+        <td><input name="Directors[__idx__].Appointed" type="date" class="form-control form-control-sm" /></td>
+
+        <td>
+            <select name="Directors[__idx__].Designation" class="form-select form-select-sm">
+                <option value="Chairperson">Chairperson</option>
+                <option value="Vice-Chairperson">Vice-Chairperson</option>
+                <option value="Secretary">Secretary</option>
+                <option value="Treasurer">Treasurer</option>
+                <option value="General Member">General Member</option>
+                <option value="Director">Director</option>
+                <option value="CEO">CEO</option>
+            </select>
+        </td>
+
+        <td>
+            <select name="Directors[__idx__].Gender" class="form-select form-select-sm">
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+            </select>
+        </td>
+
+        <td>
+            <select name="Directors[__idx__].Ethnic" class="form-select form-select-sm">
+                <option value="African">African</option>
+                <option value="Asian">Asian</option>
+                <option value="Coloured">Coloured</option>
+                <option value="Indian">Indian</option>
+                <option value="White">White</option>
+                <option value="Other">Other</option>
+            </select>
+        </td>
+
+        <!-- Yes/No selects bind to bool when values are "true" / "false" -->
+        <td><select name="Directors[__idx__].Disability" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <td><select name="Directors[__idx__].GovSecInterest" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <td><select name="Directors[__idx__].PrevEmployByGov" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <td><select name="Directors[__idx__].ClearCreditScore" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <td><select name="Directors[__idx__].ClearCriminalRecord" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <td><select name="Directors[__idx__].ValidQualifications" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <td><select name="Directors[__idx__].SuspensionFromCsd" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+        <td><select name="Directors[__idx__].JudgementsIssuedByCourt" class="form-select form-select-sm"><option value="true">Yes</option><option value="false">No</option></select></td>
+
+        <td class="text-end">
+            <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
+        </td>
+    </tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function(){
+          const tableBody = document.querySelector('#directorsTable tbody');
+          const tpl = document.querySelector('#row-template').innerHTML;
+          const addBtn = document.getElementById('addRowBtn');
+
+          let nextIndex = @(Model.Directors?.Count ?? 0);
+
+          addBtn?.addEventListener('click', () => {
+            const html = tpl.replaceAll('__idx__', String(nextIndex++));
+            const temp = document.createElement('tbody');
+            temp.innerHTML = html.trim();
+            tableBody.appendChild(temp.firstElementChild);
+          });
+
+          document.addEventListener('click', function(e){
+            if (e.target && e.target.classList.contains('remove-row')) {
+              e.target.closest('tr')?.remove();
+            }
+          });
+        })();
+    </script>
+}

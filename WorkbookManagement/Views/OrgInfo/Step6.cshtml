@@ -1,0 +1,236 @@
+﻿@model WorkbookManagement.Models.OrgInfoCampusesSection
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Org Info — Page 6 of 8";
+    var id = (int)ViewBag.Id;
+    var rows = Model.Sites ?? new List<WorkbookManagement.Models.CampusSiteRow>();
+
+    // Provinces (blank default first)
+    var provinceOptions = new List<SelectListItem> {
+        new("", ""),
+        new("Eastern Cape","Eastern Cape"),
+        new("Free State","Free State"),
+        new("Gauteng","Gauteng"),
+        new("KwaZulu-Natal","KwaZulu-Natal"),
+        new("Limpopo","Limpopo"),
+        new("Mpumalanga","Mpumalanga"),
+        new("Northern Cape","Northern Cape"),
+        new("North West","North West"),
+        new("Western Cape","Western Cape")
+    };
+
+    // Controller sets this when editing the top-level Org Info profile (SubmissionId == null)
+    bool canSaveProfile = ViewBag.CanSaveProfile == true;
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    .tight-table th, .tight-table td {
+        padding: .45rem .6rem;
+        vertical-align: middle;
+        white-space: nowrap;
+    }
+
+    .table-wide {
+        min-width: 1700px;
+    }
+
+    .cell {
+        min-width: 180px;
+    }
+
+    .cell-s {
+        min-width: 130px;
+    }
+
+    .cell-xs {
+        min-width: 110px;
+    }
+</style>
+
+<div class="container mt-3">
+    <h3>PART 4: - CAMPUSES / SITES OF DELIVERY</h3>
+
+    <div class="mb-2 text-muted">
+        Clearly list all venues/sites where training/learning occurs (including Head Office if applicable).
+    </div>
+
+    <form method="post" asp-action="Step6" asp-route-id="@id">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Sites</h6>
+                <button type="button" id="addRowBtn" class="btn btn-sm btn-outline-secondary">Add Row</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm tight-table table-wide" id="sitesTable">
+                    <thead>
+                        <tr>
+                            <th>SITE ID</th>
+                            <th>CAMPUS/SITE NAME</th>
+                            <th>STREET ADDRESS 1</th>
+                            <th>STREET ADDRESS 2</th>
+                            <th>CITY/TOWN</th>
+                            <th>POSTAL CODE</th>
+                            <th>PROVINCE</th>
+                            <th>GPS LATITUDE</th>
+                            <th>GPS LONGITUDE</th>
+                            <th>DISTRICT MUNICIPALITY</th>
+                            <th>LOCAL MUNICIPALITY</th>
+                            <th>CONTACT No.</th>
+                            <th>CONTACT EMAIL</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < rows.Count; i++)
+                        {
+                            <tr>
+                                <td>
+                                    <input asp-for="Sites[@i].SiteId" class="form-control form-control-sm cell-s site-id" readonly />
+                                </td>
+                                <td>
+                                    <input asp-for="Sites[@i].CampusSiteName" class="form-control form-control-sm cell campus-name" />
+                                </td>
+                                <td><input asp-for="Sites[@i].StreetAddress1" class="form-control form-control-sm cell" /></td>
+                                <td><input asp-for="Sites[@i].StreetAddress2" class="form-control form-control-sm cell" /></td>
+                                <td><input asp-for="Sites[@i].CityTown" class="form-control form-control-sm cell-s" /></td>
+                                <td><input asp-for="Sites[@i].PostalCode" class="form-control form-control-sm cell-xs" /></td>
+                                <td>
+                                    <select asp-for="Sites[@i].Province" asp-items="provinceOptions" class="form-select form-select-sm cell-s"></select>
+                                </td>
+                                <td><input asp-for="Sites[@i].GpsLatitude" class="form-control form-control-sm cell-s" /></td>
+                                <td><input asp-for="Sites[@i].GpsLongitude" class="form-control form-control-sm cell-s" /></td>
+                                <td><input asp-for="Sites[@i].DistrictMunicipality" class="form-control form-control-sm cell" /></td>
+                                <td><input asp-for="Sites[@i].LocalMunicipality" class="form-control form-control-sm cell" /></td>
+                                <td><input asp-for="Sites[@i].ContactNo" class="form-control form-control-sm cell-s" type="tel" /></td>
+                                <td><input asp-for="Sites[@i].ContactEmail" class="form-control form-control-sm cell" type="email" /></td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
+
+            @* Only when editing the standalone Org Info profile *@
+            @if (canSaveProfile)
+            {
+                <button class="btn btn-outline-success" name="nav" value="saveprofile" type="submit"
+                        title="Save these details to your Organisation profile for future submissions">
+                    Save Organisation Profile
+                </button>
+            }
+
+            <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+        </div>
+    </form>
+</div>
+
+<!-- Client-side row template -->
+<template id="row-template">
+    <tr>
+        <td><input name="Sites[__idx__].SiteId" class="form-control form-control-sm cell-s site-id" readonly /></td>
+        <td><input name="Sites[__idx__].CampusSiteName" class="form-control form-control-sm cell campus-name" /></td>
+        <td><input name="Sites[__idx__].StreetAddress1" class="form-control form-control-sm cell" /></td>
+        <td><input name="Sites[__idx__].StreetAddress2" class="form-control form-control-sm cell" /></td>
+        <td><input name="Sites[__idx__].CityTown" class="form-control form-control-sm cell-s" /></td>
+        <td><input name="Sites[__idx__].PostalCode" class="form-control form-control-sm cell-xs" /></td>
+        <td>
+            <select name="Sites[__idx__].Province" class="form-select form-select-sm cell-s">
+                <option value=""></option>
+                <option value="Eastern Cape">Eastern Cape</option>
+                <option value="Free State">Free State</option>
+                <option value="Gauteng">Gauteng</option>
+                <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                <option value="Limpopo">Limpopo</option>
+                <option value="Mpumalanga">Mpumalanga</option>
+                <option value="Northern Cape">Northern Cape</option>
+                <option value="North West">North West</option>
+                <option value="Western Cape">Western Cape</option>
+            </select>
+        </td>
+        <td><input name="Sites[__idx__].GpsLatitude" class="form-control form-control-sm cell-s" /></td>
+        <td><input name="Sites[__idx__].GpsLongitude" class="form-control form-control-sm cell-s" /></td>
+        <td><input name="Sites[__idx__].DistrictMunicipality" class="form-control form-control-sm cell" /></td>
+        <td><input name="Sites[__idx__].LocalMunicipality" class="form-control form-control-sm cell" /></td>
+        <td><input name="Sites[__idx__].ContactNo" class="form-control form-control-sm cell-s" type="tel" /></td>
+        <td><input name="Sites[__idx__].ContactEmail" class="form-control form-control-sm cell" type="email" /></td>
+        <td class="text-end"><button type="button" class="btn btn-sm btn-outline-danger remove-row">Remove</button></td>
+    </tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function(){
+          const body = document.querySelector('#sitesTable tbody');
+          const tpl  = document.querySelector('#row-template').innerHTML;
+          const add  = document.getElementById('addRowBtn');
+          // Avoid TS warning by parsing the Razor value as a string:
+          let nextIndex = parseInt('@(Model.Sites?.Count ?? 0)', 10) || 0;
+
+          function pad3(n){ return String(n).padStart(3,'0'); }
+
+          // Re-number Site IDs by visible row order
+          function assignSiteIds(){
+            const rows = body.querySelectorAll('tr');
+            rows.forEach((tr, i) => {
+              const idInput = tr.querySelector('.site-id');
+              if (idInput) idInput.value = pad3(i + 1);
+            });
+          }
+
+          // Initial numbering (for existing rows)
+          assignSiteIds();
+
+          // Add row
+          add.addEventListener('click', () => {
+            const html = tpl.replaceAll('__idx__', String(nextIndex++));
+            const temp = document.createElement('tbody');
+            temp.innerHTML = html.trim();
+            body.appendChild(temp.firstElementChild);
+            assignSiteIds();
+          });
+
+          // Remove row + re-number
+          document.addEventListener('click', (e) => {
+            if (e.target && e.target.classList.contains('remove-row')) {
+              e.target.closest('tr')?.remove();
+              assignSiteIds();
+            }
+          });
+
+          // Optional: keep numbering tidy while user edits names
+          body.addEventListener('input', (e) => {
+            if (e.target && e.target.classList.contains('campus-name')) {
+              assignSiteIds();
+            }
+          });
+        })();
+    </script>
+}

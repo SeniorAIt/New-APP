@@ -1,0 +1,483 @@
+﻿@model WorkbookManagement.Models.OrgInfoQualificationsSection
+@{
+    ViewData["Title"] = "Org Info — Page 7 of 8";
+    var id = (int)ViewBag.Id;
+
+    // Show "Save Organisation Profile" only when editing the standalone profile (SubmissionId == null)
+    bool canSaveProfile = ViewBag.CanSaveProfile == true;
+
+    // TYPE options (blank first)
+    var typeOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("", ""),
+        new("Short Course (Non Credit)", "Short Course (Non Credit)"),
+        new("Short Course (Credit Bearing)", "Short Course (Credit Bearing)"),
+        new("Skills Programmme", "Skills Programmme"),
+        new("General Certificate", "General Certificate"),
+        new("General Occupational Certificate", "General Occupational Certificate"),
+        new("Elementary Certificate", "Elementary Certificate"),
+        new("Elementary Occupational Certificate", "Elementary Occupational Certificate"),
+        new("Intermediate Certificate", "Intermediate Certificate"),
+        new("Intermediate Occupational Certificate", "Intermediate Occupational Certificate"),
+        new("National Certificate", "National Certificate"),
+        new("National Occupational Certificate", "National Occupational Certificate"),
+        new("Higher Certificate", "Higher Certificate"),
+        new("Higher Occupational Certificate", "Higher Occupational Certificate"),
+        new("Advanced Occupational Certificate", "Advanced Occupational Certificate"),
+        new("Occupational Diploma", "Occupational Diploma"),
+        new("Diploma", "Diploma"),
+        new("Advanced Certificate", "Advanced Certificate"),
+        new("Advanced Occupational Diploma", "Advanced Occupational Diploma"),
+        new("Advanced Diploma", "Advanced Diploma"),
+        new("Specialised Occupational Diploma", "Specialised Occupational Diploma"),
+        new("Bachelor's Degree", "Bachelor's Degree"),
+        new("Postgraduate Diploma", "Postgraduate Diploma"),
+        new("Bachelor's Honours Degree", "Bachelor's Honours Degree"),
+        new("Master's Degree", "Master's Degree"),
+        new("Professional Master's Degree", "Professional Master's Degree"),
+        new("Doctoral Degree", "Doctoral Degree"),
+        new("Professional Doctorate", "Professional Doctorate"),
+    };
+
+    // MODE OF DELIVERY
+    var modeOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("", ""),
+        new("Full-Time (In Person)", "Full-Time (In Person)"),
+        new("Part-Time (In Person)", "Part-Time (In Person)"),
+        new("Distance Learning", "Distance Learning"),
+        new("Blended Learning", "Blended Learning"),
+        new("Online/eLearning", "Online/eLearning"),
+        new("Workplace Based", "Workplace Based"),
+        new("Other", "Other"),
+    };
+
+    // CESM
+    var cesmOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("", ""),
+        new("Agriculture", "Agriculture"),
+        new("Agriculture Operations & Related Sciences", "Agriculture Operations & Related Sciences"),
+        new("Architecture & The Built Environment", "Architecture & The Built Environment"),
+        new("Visual & Performing Arts", "Visual & Performing Arts"),
+        new("Business, Economics & Management Studies", "Business, Economics & Management Studies"),
+        new("Communication, Journalism & Related Studies", "Communication, Journalism & Related Studies"),
+        new("Computer & Information Sciences", "Computer & Information Sciences"),
+        new("Education", "Education"),
+        new("Engineering", "Engineering"),
+        new("Health Professions & Related Clinical Services", "Health Professions & Related Clinical Services"),
+        new("Family Ecology & Consumer Sciences", "Family Ecology & Consumer Sciences"),
+        new("Languages, Linguistics & Literature", "Languages, Linguistics & Literature"),
+        new("Law", "Law"),
+        new("Life Sciences", "Life Sciences"),
+        new("Physical Sciences", "Physical Sciences"),
+        new("Mathematics & Statistics", "Mathematics & Statistics"),
+        new("Military Sciences", "Military Sciences"),
+        new("Philosophy, Religion & Technology", "Philosophy, Religion & Technology"),
+        new("Psychology", "Psychology"),
+        new("Public Management & Services", "Public Management & Services"),
+        new("Social Sciences", "Social Sciences"),
+    };
+
+    // Registered / Accredited Status
+    var statusOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("", ""),
+        new("Active", "Active"),
+        new("Pending", "Pending"),
+        new("Expired", "Expired"),
+        new("Revoked", "Revoked"),
+        new("N/A", "N/A"),
+    };
+
+    // Yes/No for Suitably Qualified Staff (binds to bool?)
+    var yesNoOptions = new List<Microsoft.AspNetCore.Mvc.Rendering.SelectListItem> {
+        new("", ""), new("Yes","true"), new("No","false")
+    };
+}
+
+@await Html.PartialAsync("_OrgInfoNav")
+
+<style>
+    .box {
+        border: 1px solid #bfbfbf;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 16px;
+        background: #fff;
+    }
+
+        .box h6 {
+            margin: 0 0 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+    .tight-table th, .tight-table td {
+        padding: .30rem .50rem;
+        vertical-align: middle;
+    }
+
+    .form-control-sm, .form-select-sm {
+        font-size: .9rem;
+        padding: .25rem .5rem;
+        line-height: 1.25;
+        height: auto;
+    }
+
+    th.col-actions, td.col-actions, td.td-actions {
+        min-width: 130px;
+        width: 130px;
+        white-space: nowrap;
+        text-align: right;
+        vertical-align: middle;
+    }
+
+    .btn-remove-row {
+        white-space: nowrap;
+        writing-mode: horizontal-tb !important;
+        transform: none !important;
+        padding: .125rem .6rem;
+        line-height: 1.1;
+    }
+
+    .table-wide {
+        min-width: 2200px;
+    }
+
+    .tight-table td {
+        white-space: normal;
+        word-break: break-word;
+        overflow-wrap: anywhere;
+    }
+
+    th.col-code, td.col-code {
+        min-width: 110px;
+    }
+
+    th.col-type, td.col-type {
+        min-width: 220px;
+    }
+
+    th.col-saqa, td.col-saqa {
+        min-width: 140px;
+    }
+
+    th.col-qualcode, td.col-qualcode {
+        min-width: 160px;
+    }
+
+    th.col-learncode, td.col-learncode {
+        min-width: 160px;
+    }
+
+    th.col-ofo, td.col-ofo {
+        min-width: 140px;
+    }
+
+    th.col-name, td.col-name {
+        min-width: 320px;
+    }
+
+    th.col-mode, td.col-mode {
+        min-width: 220px;
+    }
+
+    th.col-nqf, td.col-nqf {
+        min-width: 110px;
+    }
+
+    th.col-credits, td.col-credits {
+        min-width: 110px;
+    }
+
+    th.col-saqafield, td.col-saqafield {
+        min-width: 260px;
+    }
+
+    th.col-cesm, td.col-cesm {
+        min-width: 260px;
+    }
+
+    th.col-regstatus, td.col-regstatus {
+        min-width: 200px;
+    }
+
+    th.col-date, td.col-date {
+        min-width: 140px;
+    }
+
+    th.col-suitstaff, td.col-suitstaff {
+        min-width: 160px;
+    }
+
+    th.col-ratio, td.col-ratio {
+        min-width: 140px;
+    }
+
+    .tight-table select.form-select {
+        width: 100%;
+    }
+</style>
+
+<div class="container mt-3">
+    <h3>PART 5: - QUALIFICATIONS / PROGRAMMES / COURSES</h3>
+
+    <form method="post" asp-action="Step7" asp-route-id="@id">
+        @Html.AntiForgeryToken()
+        <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+        <div class="box">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">List</h6>
+                <button type="button" id="addRowBtn" class="btn btn-sm btn-outline-secondary">Add Row</button>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm tight-table table-wide" id="qualTable">
+                    <thead>
+                        <tr>
+                            <th class="col-code">CODE</th>
+                            <th class="col-type">TYPE</th>
+                            <th class="col-saqa">SAQA ID</th>
+                            <th class="col-qualcode">QUALIFICATION CODE</th>
+                            <th class="col-learncode">LEARNERSHIP CODE</th>
+                            <th class="col-ofo">OFO CODE</th>
+                            <th class="col-name">QUALIFICATION/PROGRAMME/COURSE NAME</th>
+                            <th class="col-mode">MODE OF DELIVERY</th>
+                            <th class="col-nqf">NQF LEVEL</th>
+                            <th class="col-credits">CREDITS</th>
+                            <th class="col-saqafield">SAQA FIELD OF STUDY</th>
+                            <th class="col-cesm">CESM</th>
+                            <th class="col-regstatus">REGISTERED / ACCREDITED STATUS</th>
+                            <th class="col-date">DATE</th>
+                            <th class="col-suitstaff">SUITABLY QUALIFIED STAFF</th>
+                            <th class="col-ratio">STUDENT STAFF RATIO</th>
+                            <th class="col-actions text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @for (int i = 0; i < (Model.Items?.Count ?? 0); i++)
+                        {
+                            <tr>
+                                <td class="col-code">
+                                    <input asp-for="Items[@i].Code" class="form-control form-control-sm row-code" readonly />
+                                </td>
+                                <td class="col-type">
+                                    <select asp-for="Items[@i].Type" asp-items="typeOptions" class="form-select form-select-sm type-select"></select>
+                                </td>
+                                <td class="col-saqa"><input asp-for="Items[@i].SAQAId" class="form-control form-control-sm" /></td>
+                                <td class="col-qualcode"><input asp-for="Items[@i].QualificationCode" class="form-control form-control-sm" /></td>
+                                <td class="col-learncode"><input asp-for="Items[@i].LearnershipCode" class="form-control form-control-sm" /></td>
+                                <td class="col-ofo"><input asp-for="Items[@i].OFOCode" class="form-control form-control-sm" /></td>
+                                <td class="col-name"><input asp-for="Items[@i].Name" class="form-control form-control-sm" /></td>
+                                <td class="col-mode">
+                                    <select asp-for="Items[@i].ModeOfDelivery" asp-items="modeOptions" class="form-select form-select-sm"></select>
+                                </td>
+                                <td class="col-nqf"><input asp-for="Items[@i].NQFLevel" class="form-control form-control-sm" /></td>
+                                <td class="col-credits"><input asp-for="Items[@i].Credits" type="number" min="0" class="form-control form-control-sm" /></td>
+                                <td class="col-saqafield"><input asp-for="Items[@i].SAQAFieldOfStudy" class="form-control form-control-sm" /></td>
+                                <td class="col-cesm">
+                                    <select asp-for="Items[@i].CESM" asp-items="cesmOptions" class="form-select form-select-sm"></select>
+                                </td>
+                                <td class="col-regstatus">
+                                    <select asp-for="Items[@i].RegisteredAccreditedStatus" asp-items="statusOptions" class="form-select form-select-sm"></select>
+                                </td>
+                                <td class="col-date"><input asp-for="Items[@i].StatusDate" type="date" class="form-control form-control-sm" /></td>
+                                <td class="col-suitstaff">
+                                    <select asp-for="Items[@i].SuitablyQualifiedStaff" asp-items="yesNoOptions" class="form-select form-select-sm"></select>
+                                </td>
+                                <td class="col-ratio"><input asp-for="Items[@i].StudentStaffRatio" class="form-control form-control-sm" placeholder="e.g. 1:25" /></td>
+                                <td class="col-actions">
+                                    <button type="button" class="btn btn-outline-danger btn-sm btn-remove-row remove-row">Remove</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mb-5">
+            <button class="btn btn-secondary" name="nav" value="prev" type="submit">Previous</button>
+            <button class="btn btn-primary" name="nav" value="save" type="submit">Save Draft</button>
+
+            @* Only when editing the standalone Org Info profile *@
+            @if (canSaveProfile)
+            {
+                <button class="btn btn-outline-success" name="nav" value="saveprofile" type="submit"
+                        title="Save these details to your Organisation profile for future submissions">
+                    Save Organisation Profile
+                </button>
+            }
+
+            <button class="btn btn-success" name="nav" value="next" type="submit">Next</button>
+        </div>
+    </form>
+</div>
+
+<!-- Client-side row template -->
+<template id="row-template">
+    <tr>
+        <td class="col-code"><input name="Items[__idx__].Code" class="form-control form-control-sm row-code" readonly /></td>
+        <td class="col-type">
+            <select name="Items[__idx__].Type" class="form-select form-select-sm type-select">
+                <option value=""></option>
+                <option>Short Course (Non Credit)</option>
+                <option>Short Course (Credit Bearing)</option>
+                <option>Skills Programmme</option>
+                <option>General Certificate</option>
+                <option>General Occupational Certificate</option>
+                <option>Elementary Certificate</option>
+                <option>Elementary Occupational Certificate</option>
+                <option>Intermediate Certificate</option>
+                <option>Intermediate Occupational Certificate</option>
+                <option>National Certificate</option>
+                <option>National Occupational Certificate</option>
+                <option>Higher Certificate</option>
+                <option>Higher Occupational Certificate</option>
+                <option>Advanced Occupational Certificate</option>
+                <option>Occupational Diploma</option>
+                <option>Diploma</option>
+                <option>Advanced Certificate</option>
+                <option>Advanced Occupational Diploma</option>
+                <option>Advanced Diploma</option>
+                <option>Specialised Occupational Diploma</option>
+                <option>Bachelor's Degree</option>
+                <option>Postgraduate Diploma</option>
+                <option>Bachelor's Honours Degree</option>
+                <option>Master's Degree</option>
+                <option>Professional Master's Degree</option>
+                <option>Doctoral Degree</option>
+                <option>Professional Doctorate</option>
+            </select>
+        </td>
+        <td class="col-saqa"><input name="Items[__idx__].SAQAId" class="form-control form-control-sm" /></td>
+        <td class="col-qualcode"><input name="Items[__idx__].QualificationCode" class="form-control form-control-sm" /></td>
+        <td class="col-learncode"><input name="Items[__idx__].LearnershipCode" class="form-control form-control-sm" /></td>
+        <td class="col-ofo"><input name="Items[__idx__].OFOCode" class="form-control form-control-sm" /></td>
+        <td class="col-name"><input name="Items[__idx__].Name" class="form-control form-control-sm" /></td>
+        <td class="col-mode">
+            <select name="Items[__idx__].ModeOfDelivery" class="form-select form-select-sm">
+                <option value=""></option>
+                <option>Full-Time (In Person)</option>
+                <option>Part-Time (In Person)</option>
+                <option>Distance Learning</option>
+                <option>Blended Learning</option>
+                <option>Online/eLearning</option>
+                <option>Workplace Based</option>
+                <option>Other</option>
+            </select>
+        </td>
+        <td class="col-nqf"><input name="Items[__idx__].NQFLevel" class="form-control form-control-sm" /></td>
+        <td class="col-credits"><input name="Items[__idx__].Credits" type="number" min="0" class="form-control form-control-sm" /></td>
+        <td class="col-saqafield"><input name="Items[__idx__].SAQAFieldOfStudy" class="form-control form-control-sm" /></td>
+        <td class="col-cesm">
+            <select name="Items[__idx__].CESM" class="form-select form-select-sm">
+                <option value=""></option>
+                <option>Agriculture</option>
+                <option>Agriculture Operations &amp; Related Sciences</option>
+                <option>Architecture &amp; The Built Environment</option>
+                <option>Visual &amp; Performing Arts</option>
+                <option>Business, Economics &amp; Management Studies</option>
+                <option>Communication, Journalism &amp; Related Studies</option>
+                <option>Computer &amp; Information Sciences</option>
+                <option>Education</option>
+                <option>Engineering</option>
+                <option>Health Professions &amp; Related Clinical Services</option>
+                <option>Family Ecology &amp; Consumer Sciences</option>
+                <option>Languages, Linguistics &amp; Literature</option>
+                <option>Law</option>
+                <option>Life Sciences</option>
+                <option>Physical Sciences</option>
+                <option>Mathematics &amp; Statistics</option>
+                <option>Military Sciences</option>
+                <option>Philosophy, Religion &amp; Technology</option>
+                <option>Psychology</option>
+                <option>Public Management &amp; Services</option>
+                <option>Social Sciences</option>
+            </select>
+        </td>
+        <td class="col-regstatus">
+            <select name="Items[__idx__].RegisteredAccreditedStatus" class="form-select form-select-sm">
+                <option value=""></option>
+                <option>Active</option>
+                <option>Pending</option>
+                <option>Expired</option>
+                <option>Revoked</option>
+                <option>N/A</option>
+            </select>
+        </td>
+        <td class="col-date"><input name="Items[__idx__].StatusDate" type="date" class="form-control form-control-sm" /></td>
+        <td class="col-suitstaff">
+            <select name="Items[__idx__].SuitablyQualifiedStaff" class="form-select form-select-sm">
+                <option value=""></option>
+                <option value="true">Yes</option>
+                <option value="false">No</option>
+            </select>
+        </td>
+        <td class="col-ratio"><input name="Items[__idx__].StudentStaffRatio" class="form-control form-control-sm" placeholder="e.g. 1:25" /></td>
+        <td class="col-actions">
+            <button type="button" class="btn btn-outline-danger btn-sm btn-remove-row remove-row">Remove</button>
+        </td>
+    </tr>
+</template>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (function(){
+          const body = document.querySelector('#qualTable tbody');
+          const tpl  = document.querySelector('#row-template').innerHTML;
+          const add  = document.getElementById('addRowBtn');
+          // Parse Razor value to avoid TS/JS parsing warnings
+          let nextIndex = parseInt('@(Model.Items?.Count ?? 0)', 10) || 0;
+
+          function pad3(n){ return String(n).padStart(3,'0'); }
+
+          // Produce initials from Type (remove possessive 's; strip () and punctuation)
+          function initialsFromType(s){
+            if(!s) return "";
+            s = s.replace(/'s\b/gi, "");
+            s = s.replace(/[()]/g, " ");
+            const words = s.split(/[^A-Za-z]+/).filter(Boolean);
+            return words.map(w => w[0]).join("").toUpperCase();
+          }
+
+          function updateCodes(){
+            const rows = body.querySelectorAll('tr');
+            rows.forEach((tr, i) => {
+              const typeSel = tr.querySelector('.type-select');
+              const typeText = typeSel ? (typeSel.options[typeSel.selectedIndex]?.text ?? "") : "";
+              const codeInput = tr.querySelector('.row-code');
+              if (codeInput){
+                codeInput.value = pad3(i+1) + initialsFromType(typeText);
+              }
+            });
+          }
+
+          // initial code assignment
+          updateCodes();
+
+          // add row
+          add.addEventListener('click', () => {
+            const html = tpl.replaceAll('__idx__', String(nextIndex++));
+            const temp = document.createElement('tbody');
+            temp.innerHTML = html.trim();
+            body.appendChild(temp.firstElementChild);
+            updateCodes();
+          });
+
+          // remove row
+          document.addEventListener('click', (e) => {
+            if (e.target && e.target.closest('.remove-row')) {
+              e.target.closest('tr')?.remove();
+              updateCodes();
+            }
+          });
+
+          // recalc when Type changes
+          body.addEventListener('change', (e) => {
+            if (e.target && e.target.classList.contains('type-select')) {
+              updateCodes();
+            }
+          });
+        })();
+    </script>
+}

@@ -1,0 +1,17 @@
+﻿@model string
+@{
+    ViewData["Title"] = Model ?? "Step";
+    var id = (int)ViewBag.Id;
+}
+<h6 class="text-uppercase fw-bold mb-2">@Model</h6>
+
+<form method="post">
+    @Html.AntiForgeryToken()
+    <div class="d-flex justify-content-between">
+        <button class="btn btn-outline-secondary" name="nav" value="prev">Previous</button>
+        <div class="ms-auto">
+            <button class="btn btn-secondary" name="nav" value="save">Save Draft</button>
+            <button class="btn btn-primary" name="nav" value="next">Next</button>
+        </div>
+    </div>
+</form>
